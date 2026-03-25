@@ -955,9 +955,21 @@ document.getElementById('btn-save').onclick=async()=>{
 };
 
 /* EXPORT/IMPORT */
-document.getElementById('exp-btn').onclick=()=>{
+document.getElementById('exp-btn').onclick=async()=>{
+  // Collect all data from IndexedDB
+  const allUserscores=await dbGetAll('userscores');
+  const allUserdata=await dbGetAll('userdata');
+  const allDecks=await dbGetAll('decks');
+  const backup={
+    version:2,
+    exportedAt:new Date().toISOString(),
+    words,
+    decks:allDecks,
+    userdata:allUserdata,
+    userscores:allUserscores
+  };
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(words,null,2)],{type:'application/json'}));
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
   a.download='dansk_ordbog_backup.json'; a.click(); toast('Экспорт готов ✓');
 };
 document.getElementById('imp-btn').onclick=()=>document.getElementById('imp-file').click();
@@ -965,12 +977,49 @@ document.getElementById('imp-file').onchange=async e=>{
   const f=e.target.files[0]; if(!f)return;
   try{
     const data=JSON.parse(await f.text());
+    // Support both old format (array of words) and new full backup format
     const inc=Array.isArray(data)?data:(data.words||[]);
     if(!inc.length){toast('Пустой или неверный файл');return}
-    if(!confirm(`Импортировать ${inc.length} слов? Текущие данные будут заменены.`))return;
+    const hasFullBackup=!Array.isArray(data)&&data.version===2;
+    const deckCount=(data.decks||[]).length;
+    const confirmMsg=hasFullBackup
+      ?`Импортировать полный бэкап?\n• ${inc.length} слов\n• ${deckCount} наборов\n• XP и прогресс игроков\n\nТекущие данные будут заменены.`
+      :`Импортировать ${inc.length} слов? Текущие данные будут заменены.`;
+    if(!confirm(confirmMsg))return;
+
+    // Restore words
     await dbClr('words');
     for(const w of inc){const{id,...r}=w;delete r.score;await dbAdd('words',r)}
-    words=await dbGetAll('words'); renderDict(); toast(`Импортировано ${words.length} слов ✓`);
+    words=await dbGetAll('words');
+
+    // Restore decks (if full backup)
+    if(hasFullBackup&&data.decks&&data.decks.length){
+      await dbClr('decks');
+      for(const d of data.decks){const{id,...r}=d;await dbAdd('decks',r)}
+      decks=await dbGetAll('decks');
+    }
+
+    // Restore userdata (XP / testPoints)
+    if(hasFullBackup&&data.userdata&&data.userdata.length){
+      await dbClr('userdata');
+      for(const ud of data.userdata){await dbPut('userdata',ud)}
+      for(const ud of data.userdata){if(userDataMap[ud.uid]!==undefined)userDataMap[ud.uid]=ud}
+    }
+
+    // Restore userscores (word progress per user)
+    if(hasFullBackup&&data.userscores&&data.userscores.length){
+      await dbClr('userscores');
+      for(const us of data.userscores){await dbPut('userscores',us)}
+      // Rebuild in-memory userScores map
+      for(const k in userScores) delete userScores[k];
+      for(const us of data.userscores){
+        if(!userScores[us.uid])userScores[us.uid]={};
+        userScores[us.uid][us.wid]=us.score;
+      }
+    }
+
+    renderDict(); renderDecks(); syncDeckSelect(); updateHeaderUser(); renderStatusPage();
+    toast(`Импортировано: ${words.length} слов, ${decks.length} наборов ✓`);
   }catch(err){toast('Ошибка импорта: '+err.message)}
   e.target.value='';
 };
