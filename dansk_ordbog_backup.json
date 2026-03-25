@@ -1,0 +1,1074 @@
+[
+  {
+    "da": "ikke lyst til",
+    "type": "other",
+    "ru": "не хотеть / нет желания",
+    "example": "Jeg har ikke lyst til at gå ud i dag. — Мне не хочется выходить сегодня.",
+    "verbForms": null,
+    "score": 2,
+    "id": 215
+  },
+  {
+    "da": "ikke enig med",
+    "type": "other",
+    "ru": "не согласен с",
+    "example": "Jeg er ikke enig med dig. — Я не согласен с тобой.",
+    "verbForms": null,
+    "score": 1,
+    "id": 216
+  },
+  {
+    "da": "sikker",
+    "type": "other",
+    "ru": "уверенный / безопасный",
+    "example": "Er du sikker på det? — Ты уверен в этом?",
+    "verbForms": null,
+    "score": 2,
+    "id": 217
+  },
+  {
+    "da": "ensom",
+    "type": "other",
+    "ru": "одинокий",
+    "example": "Hun føler sig ensom. — Она чувствует себя одинокой.",
+    "verbForms": null,
+    "score": 2,
+    "id": 218
+  },
+  {
+    "da": "rart",
+    "type": "other",
+    "ru": "приятно / мило",
+    "example": "Det er rart at se dig. — Приятно тебя видеть.",
+    "verbForms": null,
+    "score": 0,
+    "id": 219
+  },
+  {
+    "da": "selskab",
+    "type": "other",
+    "ru": "компания / общество",
+    "example": "Jeg er glad for dit selskab. — Я рад твоей компании.",
+    "verbForms": null,
+    "score": 2,
+    "id": 220
+  },
+  {
+    "da": "smukke",
+    "type": "other",
+    "ru": "красивые / прекрасные",
+    "example": "De har smukke øjne. — У неё красивые глаза.",
+    "verbForms": null,
+    "score": 2,
+    "id": 221
+  },
+  {
+    "da": "tryg",
+    "type": "other",
+    "ru": "в безопасности / спокойный",
+    "example": "Jeg føler mig tryg her. — Я чувствую себя здесь в безопасности.",
+    "verbForms": null,
+    "score": 2,
+    "id": 222
+  },
+  {
+    "da": "grine",
+    "type": "verb",
+    "ru": "смеяться",
+    "example": "Han griner hele tiden. — Он смеётся всё время.",
+    "verbForms": {
+      "inf": "at grine",
+      "present": "griner",
+      "past": "grinede",
+      "perfect": "har grinet"
+    },
+    "score": 2,
+    "id": 223
+  },
+  {
+    "da": "hue",
+    "type": "other",
+    "ru": "шапка (вязаная)",
+    "example": "Husk at tage din hue på. — Не забудь надеть шапку.",
+    "verbForms": null,
+    "score": 2,
+    "id": 224
+  },
+  {
+    "da": "forhold",
+    "type": "other",
+    "ru": "отношения / условия",
+    "example": "De har et godt forhold. — У них хорошие отношения.",
+    "verbForms": null,
+    "score": 0,
+    "id": 225
+  },
+  {
+    "da": "alligevel",
+    "type": "other",
+    "ru": "всё равно / тем не менее",
+    "example": "Hun kom alligevel. — Она всё равно пришла.",
+    "verbForms": null,
+    "score": 1,
+    "id": 226
+  },
+  {
+    "da": "omkring",
+    "type": "other",
+    "ru": "вокруг / около / примерно",
+    "example": "Der er træer omkring huset. — Вокруг дома есть деревья.",
+    "verbForms": null,
+    "score": 1,
+    "id": 227
+  },
+  {
+    "da": "stemme",
+    "type": "verb",
+    "ru": "голосовать / соответствовать",
+    "example": "Det stemmer ikke. — Это не соответствует действительности.",
+    "verbForms": {
+      "inf": "at stemme",
+      "present": "stemmer",
+      "past": "stemte",
+      "perfect": "har stemt"
+    },
+    "score": 1,
+    "id": 228
+  },
+  {
+    "da": "usynlige",
+    "type": "other",
+    "ru": "невидимые",
+    "example": "Bakterier er usynlige for øjet. — Бактерии невидимы для глаза.",
+    "verbForms": null,
+    "score": 0,
+    "id": 229
+  },
+  {
+    "da": "skyld",
+    "type": "other",
+    "ru": "вина / из-за",
+    "example": "Det er min skyld. — Это моя вина.",
+    "verbForms": null,
+    "score": 0,
+    "id": 230
+  },
+  {
+    "da": "besked",
+    "type": "other",
+    "ru": "сообщение / весть",
+    "example": "Jeg sendte dig en besked. — Я отправил тебе сообщение.",
+    "verbForms": null,
+    "score": 2,
+    "id": 231
+  },
+  {
+    "da": "opdage",
+    "type": "verb",
+    "ru": "обнаружить / открыть",
+    "example": "Hun opdagede fejlen. — Она обнаружила ошибку.",
+    "verbForms": {
+      "inf": "at opdage",
+      "present": "opdager",
+      "past": "opdagede",
+      "perfect": "har opdaget"
+    },
+    "score": 2,
+    "id": 232
+  },
+  {
+    "da": "overleve",
+    "type": "verb",
+    "ru": "выжить / пережить",
+    "example": "Han overlevede ulykken. — Он пережил аварию.",
+    "verbForms": {
+      "inf": "at overleve",
+      "present": "overlever",
+      "past": "overlevede",
+      "perfect": "har overlevet"
+    },
+    "score": 2,
+    "id": 233
+  },
+  {
+    "da": "mærke",
+    "type": "verb",
+    "ru": "замечать / чувствовать",
+    "example": "Jeg kan mærke kulden. — Я чувствую холод.",
+    "verbForms": {
+      "inf": "at mærke",
+      "present": "mærker",
+      "past": "mærkede",
+      "perfect": "har mærket"
+    },
+    "score": 1,
+    "id": 234
+  },
+  {
+    "da": "ansigt",
+    "type": "other",
+    "ru": "лицо",
+    "example": "Han har et venligt ansigt. — У него доброе лицо.",
+    "verbForms": null,
+    "score": 1,
+    "id": 235
+  },
+  {
+    "da": "imponerede",
+    "type": "other",
+    "ru": "впечатлил / поразил",
+    "example": "Han imponerede alle med sin tale. — Он впечатлил всех своей речью.",
+    "verbForms": null,
+    "score": 1,
+    "id": 236
+  },
+  {
+    "da": "heldigvis",
+    "type": "other",
+    "ru": "к счастью / слава богу",
+    "example": "Heldigvis kom hun i tide. — К счастью, она пришла вовремя.",
+    "verbForms": null,
+    "score": 1,
+    "id": 237
+  },
+  {
+    "da": "i går",
+    "type": "other",
+    "ru": "вчера",
+    "example": "Jeg så ham i går. — Я видел его вчера.",
+    "verbForms": null,
+    "score": 1,
+    "id": 238
+  },
+  {
+    "da": "indså",
+    "type": "verb",
+    "ru": "осознать / понять",
+    "example": "Hun indså sin fejl. — Она осознала свою ошибку.",
+    "verbForms": {
+      "inf": "at indse",
+      "present": "indser",
+      "past": "indså",
+      "perfect": "har indset"
+    },
+    "score": 2,
+    "id": 239
+  },
+  {
+    "da": "tilfældig",
+    "type": "other",
+    "ru": "случайный",
+    "example": "Det var et tilfældigt møde. — Это была случайная встреча.",
+    "verbForms": null,
+    "score": 1,
+    "id": 240
+  },
+  {
+    "da": "samtidig",
+    "type": "other",
+    "ru": "одновременно / в то же время",
+    "example": "De talte alle samtidig. — Они говорили одновременно.",
+    "verbForms": null,
+    "score": 2,
+    "id": 241
+  },
+  {
+    "da": "nysgerrig",
+    "type": "other",
+    "ru": "любопытный",
+    "example": "Børn er altid nysgerrige. — Дети всегда любопытны.",
+    "verbForms": null,
+    "score": 0,
+    "id": 242
+  },
+  {
+    "da": "lede efter",
+    "type": "verb",
+    "ru": "искать / разыскивать",
+    "example": "Jeg leder efter mine nøgler. — Я ищу свои ключи.",
+    "verbForms": {
+      "inf": "at lede efter",
+      "present": "leder efter",
+      "past": "ledte efter",
+      "perfect": "har ledt efter"
+    },
+    "score": 1,
+    "id": 243
+  },
+  {
+    "da": "tidligt",
+    "type": "other",
+    "ru": "рано",
+    "example": "Hun stod op tidligt. — Она встала рано.",
+    "verbForms": null,
+    "score": 1,
+    "id": 244
+  },
+  {
+    "da": "råd",
+    "type": "other",
+    "ru": "совет / средства",
+    "example": "Kan du give mig et råd? — Можешь дать мне совет?",
+    "verbForms": null,
+    "score": 1,
+    "id": 245
+  },
+  {
+    "da": "have råd",
+    "type": "verb",
+    "ru": "позволить себе / иметь средства",
+    "example": "Jeg har ikke råd til det. — Я не могу себе это позволить.",
+    "verbForms": {
+      "inf": "at have råd",
+      "present": "har råd",
+      "past": "havde råd",
+      "perfect": "har haft råd"
+    },
+    "score": 1,
+    "id": 246
+  },
+  {
+    "da": "umuligt",
+    "type": "other",
+    "ru": "невозможно",
+    "example": "Det er umuligt at gøre. — Это невозможно сделать.",
+    "verbForms": null,
+    "score": 1,
+    "id": 247
+  },
+  {
+    "da": "ret",
+    "type": "other",
+    "ru": "довольно / право / правильно",
+    "example": "Det er ret sjovt. — Это довольно смешно.",
+    "verbForms": null,
+    "score": 2,
+    "id": 248
+  },
+  {
+    "da": "besværligt",
+    "type": "other",
+    "ru": "трудно / затруднительно",
+    "example": "Det er besværligt at parkere her. — Здесь трудно припарковаться.",
+    "verbForms": null,
+    "score": 1,
+    "id": 249
+  },
+  {
+    "da": "derud",
+    "type": "other",
+    "ru": "туда / наружу",
+    "example": "Vi tager derud i morgen. — Мы едем туда завтра.",
+    "verbForms": null,
+    "score": 0,
+    "id": 250
+  },
+  {
+    "da": "opsparing",
+    "type": "other",
+    "ru": "сбережения / накопления",
+    "example": "Han brugte hele sin opsparing. — Он потратил все свои сбережения.",
+    "verbForms": null,
+    "score": 1,
+    "id": 251
+  },
+  {
+    "da": "nødt til",
+    "type": "other",
+    "ru": "вынужден / приходится",
+    "example": "Jeg er nødt til at gå nu. — Мне нужно уйти сейчас.",
+    "verbForms": null,
+    "score": 1,
+    "id": 252
+  },
+  {
+    "da": "overrasket",
+    "type": "other",
+    "ru": "удивлённый / поражённый",
+    "example": "Jeg var meget overrasket. — Я был очень удивлён.",
+    "verbForms": null,
+    "score": 0,
+    "id": 253
+  },
+  {
+    "da": "plejede",
+    "type": "verb",
+    "ru": "иметь обыкновение / бывало",
+    "example": "Han plejede at løbe hver morgen. — Он обычно бегал каждое утро.",
+    "verbForms": {
+      "inf": "at pleje",
+      "present": "plejer",
+      "past": "plejede",
+      "perfect": "har plejet"
+    },
+    "score": 0,
+    "id": 254
+  },
+  {
+    "da": "alvorligt",
+    "type": "other",
+    "ru": "серьёзно",
+    "example": "Tag det alvorligt. — Отнесись к этому серьёзно.",
+    "verbForms": null,
+    "score": 0,
+    "id": 255
+  },
+  {
+    "da": "bestille",
+    "type": "verb",
+    "ru": "заказывать",
+    "example": "Jeg bestiller mad. — Я заказываю еду.",
+    "verbForms": {
+      "inf": "at bestille",
+      "present": "bestiller",
+      "past": "bestilte",
+      "perfect": "har bestilt"
+    },
+    "score": 1,
+    "id": 256
+  },
+  {
+    "da": "bruge",
+    "type": "verb",
+    "ru": "использовать",
+    "example": "Jeg bruger min telefon. — Я использую телефон.",
+    "verbForms": {
+      "inf": "at bruge",
+      "present": "bruger",
+      "past": "brugte",
+      "perfect": "har brugt"
+    },
+    "score": 1,
+    "id": 257
+  },
+  {
+    "da": "købe",
+    "type": "verb",
+    "ru": "покупать",
+    "example": "Jeg køber kaffe. — Я покупаю кофе.",
+    "verbForms": {
+      "inf": "at købe",
+      "present": "køber",
+      "past": "købte",
+      "perfect": "har købt"
+    },
+    "score": 1,
+    "id": 258
+  },
+  {
+    "da": "spørge",
+    "type": "verb",
+    "ru": "спрашивать",
+    "example": "Jeg spørger ham. — Я спрашиваю его.",
+    "verbForms": {
+      "inf": "at spørge",
+      "present": "spørger",
+      "past": "spurgte",
+      "perfect": "har spurgt"
+    },
+    "score": 1,
+    "id": 259
+  },
+  {
+    "da": "møde",
+    "type": "verb",
+    "ru": "встречать",
+    "example": "Jeg møder hende. — Я встречаю её.",
+    "verbForms": {
+      "inf": "at møde",
+      "present": "møder",
+      "past": "mødte",
+      "perfect": "har mødt"
+    },
+    "score": 1,
+    "id": 260
+  },
+  {
+    "da": "høre",
+    "type": "verb",
+    "ru": "слышать",
+    "example": "Jeg hører musik. — Я слушаю музыку.",
+    "verbForms": {
+      "inf": "at høre",
+      "present": "hører",
+      "past": "hørte",
+      "perfect": "har hørt"
+    },
+    "score": 1,
+    "id": 261
+  },
+  {
+    "da": "føle",
+    "type": "verb",
+    "ru": "чувствовать",
+    "example": "Jeg føler mig glad. — Я чувствую себя счастливым.",
+    "verbForms": {
+      "inf": "at føle",
+      "present": "føler",
+      "past": "følte",
+      "perfect": "har følt"
+    },
+    "score": 1,
+    "id": 262
+  },
+  {
+    "da": "sende",
+    "type": "verb",
+    "ru": "отправлять",
+    "example": "Jeg sender en besked. — Я отправляю сообщение.",
+    "verbForms": {
+      "inf": "at sende",
+      "present": "sender",
+      "past": "sendte",
+      "perfect": "har sendt"
+    },
+    "score": 1,
+    "id": 263
+  },
+  {
+    "da": "vente",
+    "type": "verb",
+    "ru": "ждать",
+    "example": "Jeg venter på dig. — Я жду тебя.",
+    "verbForms": {
+      "inf": "at vente",
+      "present": "venter",
+      "past": "ventede",
+      "perfect": "har ventet"
+    },
+    "score": 1,
+    "id": 264
+  },
+  {
+    "da": "rejse",
+    "type": "verb",
+    "ru": "путешествовать",
+    "example": "Jeg rejser meget. — Я много путешествую.",
+    "verbForms": {
+      "inf": "at rejse",
+      "present": "rejser",
+      "past": "rejste",
+      "perfect": "har rejst"
+    },
+    "score": 1,
+    "id": 265
+  },
+  {
+    "da": "lægge",
+    "type": "verb",
+    "ru": "класть",
+    "example": "Jeg lægger bogen. — Я кладу книгу.",
+    "verbForms": {
+      "inf": "at lægge",
+      "present": "lægger",
+      "past": "lagde",
+      "perfect": "har lagt"
+    },
+    "score": 1,
+    "id": 266
+  },
+  {
+    "da": "sætte",
+    "type": "verb",
+    "ru": "ставить",
+    "example": "Jeg sætter mig. — Я сажусь.",
+    "verbForms": {
+      "inf": "at sætte",
+      "present": "sætter",
+      "past": "satte",
+      "perfect": "har sat"
+    },
+    "score": 1,
+    "id": 267
+  },
+  {
+    "da": "læse",
+    "type": "verb",
+    "ru": "читать",
+    "example": "Jeg læser en bog. — Я читаю книгу.",
+    "verbForms": {
+      "inf": "at læse",
+      "present": "læser",
+      "past": "læste",
+      "perfect": "har læst"
+    },
+    "score": 1,
+    "id": 268
+  },
+  {
+    "da": "miste",
+    "type": "verb",
+    "ru": "терять",
+    "example": "Jeg mistede min nøgle. — Я потерял ключ.",
+    "verbForms": {
+      "inf": "at miste",
+      "present": "mister",
+      "past": "mistede",
+      "perfect": "har mistet"
+    },
+    "score": 1,
+    "id": 269
+  },
+  {
+    "da": "snakke",
+    "type": "verb",
+    "ru": "разговаривать",
+    "example": "Vi snakker sammen. — Мы разговариваем.",
+    "verbForms": {
+      "inf": "at snakke",
+      "present": "snakker",
+      "past": "snakkede",
+      "perfect": "har snakket"
+    },
+    "score": 1,
+    "id": 270
+  },
+  {
+    "da": "ringe",
+    "type": "verb",
+    "ru": "звонить",
+    "example": "Jeg ringer til dig. — Я звоню тебе.",
+    "verbForms": {
+      "inf": "at ringe",
+      "present": "ringer",
+      "past": "ringede",
+      "perfect": "har ringet"
+    },
+    "score": 1,
+    "id": 271
+  },
+  {
+    "da": "beslutte",
+    "type": "verb",
+    "ru": "решать",
+    "example": "Jeg beslutter det. — Я решаю это.",
+    "verbForms": {
+      "inf": "at beslutte",
+      "present": "beslutter",
+      "past": "besluttede",
+      "perfect": "har besluttet"
+    },
+    "score": 1,
+    "id": 272
+  },
+  {
+    "da": "ignorere",
+    "type": "verb",
+    "ru": "игнорировать",
+    "example": "Han ignorerer mig. — Он игнорирует меня.",
+    "verbForms": {
+      "inf": "at ignorere",
+      "present": "ignorerer",
+      "past": "ignorerede",
+      "perfect": "har ignoreret"
+    },
+    "score": 1,
+    "id": 273
+  },
+  {
+    "da": "elske",
+    "type": "verb",
+    "ru": "любить",
+    "example": "Jeg elsker dig. — Я люблю тебя.",
+    "verbForms": {
+      "inf": "at elske",
+      "present": "elsker",
+      "past": "elskede",
+      "perfect": "har elsket"
+    },
+    "score": 1,
+    "id": 274
+  },
+  {
+    "da": "arbejde",
+    "type": "verb",
+    "ru": "работать",
+    "example": "Jeg arbejder her. — Я работаю здесь.",
+    "verbForms": {
+      "inf": "at arbejde",
+      "present": "arbejder",
+      "past": "arbejdede",
+      "perfect": "har arbejdet"
+    },
+    "score": 1,
+    "id": 275
+  },
+  {
+    "da": "leve",
+    "type": "verb",
+    "ru": "жить",
+    "example": "Han lever godt. — Он живёт хорошо.",
+    "verbForms": {
+      "inf": "at leve",
+      "present": "lever",
+      "past": "levede",
+      "perfect": "har levet"
+    },
+    "score": 1,
+    "id": 276
+  },
+  {
+    "da": "handle",
+    "type": "verb",
+    "ru": "покупать (в магазине)",
+    "example": "Jeg handler ind. — Я делаю покупки.",
+    "verbForms": {
+      "inf": "at handle",
+      "present": "handler",
+      "past": "handlede",
+      "perfect": "har handlet"
+    },
+    "score": 1,
+    "id": 277
+  },
+  {
+    "da": "betale",
+    "type": "verb",
+    "ru": "платить",
+    "example": "Jeg betaler nu. — Я плачу сейчас.",
+    "verbForms": {
+      "inf": "at betale",
+      "present": "betaler",
+      "past": "betalte",
+      "perfect": "har betalt"
+    },
+    "score": 1,
+    "id": 278
+  },
+  {
+    "da": "bo",
+    "type": "verb",
+    "ru": "жить (проживать)",
+    "example": "Jeg bor i Danmark. — Я живу в Дании.",
+    "verbForms": {
+      "inf": "at bo",
+      "present": "bor",
+      "past": "boede",
+      "perfect": "har boet"
+    },
+    "score": 1,
+    "id": 279
+  },
+  {
+    "da": "synes",
+    "type": "verb",
+    "ru": "считать (мнение)",
+    "example": "Jeg synes det er godt. — Я думаю это хорошо.",
+    "verbForms": {
+      "inf": "at synes",
+      "present": "synes",
+      "past": "syntes",
+      "perfect": "har syntes"
+    },
+    "score": 1,
+    "id": 280
+  },
+  {
+    "da": "fortælle",
+    "type": "verb",
+    "ru": "рассказывать",
+    "example": "Jeg fortæller en historie. — Я рассказываю историю.",
+    "verbForms": {
+      "inf": "at fortælle",
+      "present": "fortæller",
+      "past": "fortalte",
+      "perfect": "har fortalt"
+    },
+    "score": 1,
+    "id": 281
+  },
+  {
+    "da": "prøve",
+    "type": "verb",
+    "ru": "пытаться",
+    "example": "Jeg prøver igen. — Я пытаюсь снова.",
+    "verbForms": {
+      "inf": "at prøve",
+      "present": "prøver",
+      "past": "prøvede",
+      "perfect": "har prøvet"
+    },
+    "score": 1,
+    "id": 282
+  },
+  {
+    "da": "ønske",
+    "type": "verb",
+    "ru": "желать",
+    "example": "Jeg ønsker dig held. — Я желаю тебе удачи.",
+    "verbForms": {
+      "inf": "at ønske",
+      "present": "ønsker",
+      "past": "ønskede",
+      "perfect": "har ønsket"
+    },
+    "score": 1,
+    "id": 283
+  },
+  {
+    "da": "være",
+    "type": "verb",
+    "ru": "быть",
+    "example": "Jeg er her. — Я здесь.",
+    "verbForms": {
+      "inf": "at være",
+      "present": "er",
+      "past": "var",
+      "perfect": "har været"
+    },
+    "score": 1,
+    "id": 284
+  },
+  {
+    "da": "have",
+    "type": "verb",
+    "ru": "иметь",
+    "example": "Jeg har tid. — У меня есть время.",
+    "verbForms": {
+      "inf": "at have",
+      "present": "har",
+      "past": "havde",
+      "perfect": "har haft"
+    },
+    "score": 1,
+    "id": 285
+  },
+  {
+    "da": "blive",
+    "type": "verb",
+    "ru": "становиться",
+    "example": "Jeg bliver træt. — Я становлюсь уставшим.",
+    "verbForms": {
+      "inf": "at blive",
+      "present": "bliver",
+      "past": "blev",
+      "perfect": "er blevet"
+    },
+    "score": 1,
+    "id": 286
+  },
+  {
+    "da": "komme",
+    "type": "verb",
+    "ru": "приходить",
+    "example": "Han kommer nu. — Он приходит сейчас.",
+    "verbForms": {
+      "inf": "at komme",
+      "present": "kommer",
+      "past": "kom",
+      "perfect": "er kommet"
+    },
+    "score": 1,
+    "id": 287
+  },
+  {
+    "da": "gå",
+    "type": "verb",
+    "ru": "идти",
+    "example": "Jeg går hjem. — Я иду домой.",
+    "verbForms": {
+      "inf": "at gå",
+      "present": "går",
+      "past": "gik",
+      "perfect": "er gået"
+    },
+    "score": 1,
+    "id": 288
+  },
+  {
+    "da": "se",
+    "type": "verb",
+    "ru": "видеть",
+    "example": "Jeg ser det. — Я вижу это.",
+    "verbForms": {
+      "inf": "at se",
+      "present": "ser",
+      "past": "så",
+      "perfect": "har set"
+    },
+    "score": 1,
+    "id": 289
+  },
+  {
+    "da": "sige",
+    "type": "verb",
+    "ru": "сказать",
+    "example": "Jeg siger sandheden. — Я говорю правду.",
+    "verbForms": {
+      "inf": "at sige",
+      "present": "siger",
+      "past": "sagde",
+      "perfect": "har sagt"
+    },
+    "score": 1,
+    "id": 290
+  },
+  {
+    "da": "skrive",
+    "type": "verb",
+    "ru": "писать",
+    "example": "Jeg skriver en mail. — Я пишу письмо.",
+    "verbForms": {
+      "inf": "at skrive",
+      "present": "skriver",
+      "past": "skrev",
+      "perfect": "har skrevet"
+    },
+    "score": 1,
+    "id": 291
+  },
+  {
+    "da": "give",
+    "type": "verb",
+    "ru": "давать",
+    "example": "Jeg giver dig det. — Я даю тебе это.",
+    "verbForms": {
+      "inf": "at give",
+      "present": "giver",
+      "past": "gav",
+      "perfect": "har givet"
+    },
+    "score": 1,
+    "id": 292
+  },
+  {
+    "da": "tage",
+    "type": "verb",
+    "ru": "брать",
+    "example": "Jeg tager bussen. — Я беру автобус.",
+    "verbForms": {
+      "inf": "at tage",
+      "present": "tager",
+      "past": "tog",
+      "perfect": "har taget"
+    },
+    "score": 1,
+    "id": 293
+  },
+  {
+    "da": "vide",
+    "type": "verb",
+    "ru": "знать",
+    "example": "Jeg ved det. — Я знаю это.",
+    "verbForms": {
+      "inf": "at vide",
+      "present": "ved",
+      "past": "vidste",
+      "perfect": "har vidst"
+    },
+    "score": 1,
+    "id": 294
+  },
+  {
+    "da": "få",
+    "type": "verb",
+    "ru": "получать",
+    "example": "Jeg får hjælp. — Я получаю помощь.",
+    "verbForms": {
+      "inf": "at få",
+      "present": "får",
+      "past": "fik",
+      "perfect": "har fået"
+    },
+    "score": 1,
+    "id": 295
+  },
+  {
+    "da": "stå",
+    "type": "verb",
+    "ru": "стоять",
+    "example": "Jeg står her. — Я стою здесь.",
+    "verbForms": {
+      "inf": "at stå",
+      "present": "står",
+      "past": "stod",
+      "perfect": "har stået"
+    },
+    "score": 1,
+    "id": 296
+  },
+  {
+    "da": "ligge",
+    "type": "verb",
+    "ru": "лежать",
+    "example": "Bogen ligger her. — Книга лежит здесь.",
+    "verbForms": {
+      "inf": "at ligge",
+      "present": "ligger",
+      "past": "lå",
+      "perfect": "har ligget"
+    },
+    "score": 1,
+    "id": 297
+  },
+  {
+    "da": "hedde",
+    "type": "verb",
+    "ru": "называться",
+    "example": "Jeg hedder Denis. — Меня зовут Денис.",
+    "verbForms": {
+      "inf": "at hedde",
+      "present": "hedder",
+      "past": "hed",
+      "perfect": "har heddet"
+    },
+    "score": 1,
+    "id": 298
+  },
+  {
+    "da": "kunne",
+    "type": "verb",
+    "ru": "мочь",
+    "example": "Jeg kan gøre det. — Я могу это сделать.",
+    "verbForms": {
+      "inf": "at kunne",
+      "present": "kan",
+      "past": "kunne",
+      "perfect": "har kunnet"
+    },
+    "score": 1,
+    "id": 299
+  },
+  {
+    "da": "ville",
+    "type": "verb",
+    "ru": "хотеть",
+    "example": "Jeg vil gå. — Я хочу идти.",
+    "verbForms": {
+      "inf": "at ville",
+      "present": "vil",
+      "past": "ville",
+      "perfect": "har villet"
+    },
+    "score": 1,
+    "id": 300
+  },
+  {
+    "da": "skulle",
+    "type": "verb",
+    "ru": "должен",
+    "example": "Jeg skal arbejde. — Я должен работать.",
+    "verbForms": {
+      "inf": "at skulle",
+      "present": "skal",
+      "past": "skulle",
+      "perfect": "har skullet"
+    },
+    "score": 0,
+    "id": 301
+  },
+  {
+    "da": "forlade",
+    "ru": "покидать",
+    "type": "verb",
+    "example": "Han forlod huset - Он покинул дом.",
+    "verbForms": {
+      "inf": "forlade",
+      "present": "forlader",
+      "past": "forlod",
+      "perfect": "forladt"
+    },
+    "score": 0,
+    "id": 302
+  }
+]
