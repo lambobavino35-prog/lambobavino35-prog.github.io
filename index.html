@@ -110,6 +110,20 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
 .score-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
 .sd0{background:var(--muted)}.sd1{background:#f97316}.sd2{background:#facc15}.sd3{background:var(--success)}
 
+/* ══ AUDIO ══ */
+.speak-btn{background:none;border:1px solid var(--border);color:var(--accent2);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0;transition:all .15s;padding:0}
+.speak-btn:hover{background:var(--accent2);color:#0e0f14;border-color:var(--accent2)}
+.speak-btn:active{transform:scale(.9)}
+.speak-btn-lg{width:40px;height:40px;font-size:17px;border-width:2px}
+.word-da-row{display:flex;align-items:center;gap:7px}
+.fc-word-row{display:flex;align-items:center;justify-content:center;gap:10px}
+.vg-word-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}
+
+/* ══ SYNC / DUE ══ */
+.spill.due{color:var(--accent2);cursor:pointer}
+.spill.due:hover{text-decoration:underline}
+#sync-error{display:none;position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#2d1515;border:1px solid var(--danger);color:#fca5a5;font-family:sans-serif;font-size:13px;padding:10px 14px;border-radius:10px;z-index:3000;text-align:center}
+
 /* ══ MODAL ══ */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
 .overlay.open{display:flex}
@@ -448,6 +462,7 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
       <div class="cfg-label">Источник слов</div>
       <div class="radio-row" id="src-row">
         <label class="ropt on"><input type="radio" name="src" value="all" checked>Все слова</label>
+        <label class="ropt"><input type="radio" name="src" value="due">⏰ К повторению</label>
         <label class="ropt"><input type="radio" name="src" value="count">Количество</label>
         <label class="ropt"><input type="radio" name="src" value="deck">Набор</label>
       </div>
@@ -532,6 +547,8 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<div id="sync-error"></div>
 <script>
 /* ══════════════════════════════════════════════
    STATUS SYSTEM
@@ -552,38 +569,79 @@ const LEVELS = [
 // testPoints per user stored in userData[userId].testPoints
 
 /* ══════════════════════════════════════════════
-   IndexedDB
+   SUPABASE
+   Data now lives in the cloud instead of per-browser
+   IndexedDB, so both profiles see the same word bank
+   and each other's real progress from any device.
 ══════════════════════════════════════════════ */
-const DB_NAME='DanskOrdbog3', DB_VER=1;
-let db=null;
-function openDB(){
-  return new Promise((res,rej)=>{
-    const r=indexedDB.open(DB_NAME,DB_VER);
-    r.onupgradeneeded=e=>{
-      const d=e.target.result;
-      if(!d.objectStoreNames.contains('words')) d.createObjectStore('words',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('decks')) d.createObjectStore('decks',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('userdata')) d.createObjectStore('userdata',{keyPath:'uid'});
-      // userScores: key = "userId_wordId", value = {uid,wid,score}
-      if(!d.objectStoreNames.contains('userscores')) d.createObjectStore('userscores',{keyPath:'key'});
-    };
-    r.onsuccess=e=>{db=e.target.result;res(db)};
-    r.onerror=e=>rej(e.target.error);
-  });
+const SUPABASE_URL='https://vwfsiovtjcthvkvrpswi.supabase.co';
+const SUPABASE_KEY='sb_publishable_zbqT_BhBoA6swHezmfSS_g_NWt67sQR';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// row (snake_case, as stored in Postgres) <-> app object (camelCase) mapping,
+// so the rest of the app below can keep working with the same shapes as before
+function rowToWord(r){return {id:r.id,da:r.da,ru:r.ru,type:r.type,example:r.example,verbForms:r.verb_forms||null}}
+function wordToRow(w){return {da:w.da,ru:w.ru,type:w.type,example:w.example,verb_forms:w.verbForms||null}}
+function rowToDeck(r){return {id:r.id,name:r.name,wordIds:r.word_ids||[]}}
+function deckToRow(d){return {name:d.name,word_ids:d.wordIds||[]}}
+
+async function dbAddWord(entry){
+  const {data,error}=await sb.from('words').insert(wordToRow(entry)).select().single();
+  if(error)throw error; return rowToWord(data);
 }
-function tx(store,mode,fn){
-  return new Promise((res,rej)=>{
-    const t=db.transaction(store,mode),s=t.objectStore(store),r=fn(s);
-    if(r){r.onsuccess=()=>res(r.result);r.onerror=e=>rej(e.target.error)}
-    else{t.oncomplete=()=>res();t.onerror=e=>rej(e.target.error)}
-  });
+async function dbUpdateWord(id,entry){
+  const {error}=await sb.from('words').update(wordToRow(entry)).eq('id',id);
+  if(error)throw error;
 }
-const dbGetAll=(st)=>tx(st,'readonly',s=>s.getAll());
-const dbAdd=(st,v)=>tx(st,'readwrite',s=>s.add(v));
-const dbPut=(st,v)=>tx(st,'readwrite',s=>s.put(v));
-const dbDel=(st,id)=>tx(st,'readwrite',s=>s.delete(id));
-const dbClr=(st)=>tx(st,'readwrite',s=>{s.clear();return null});
-const dbGet=(st,k)=>tx(st,'readonly',s=>s.get(k));
+async function dbDeleteWord(id){
+  const {error}=await sb.from('words').delete().eq('id',id);
+  if(error)throw error;
+}
+async function dbAddDeck(entry){
+  const {data,error}=await sb.from('decks').insert(deckToRow(entry)).select().single();
+  if(error)throw error; return rowToDeck(data);
+}
+async function dbUpdateDeck(id,entry){
+  const {error}=await sb.from('decks').update(deckToRow(entry)).eq('id',id);
+  if(error)throw error;
+}
+async function dbDeleteDeck(id){
+  const {error}=await sb.from('decks').delete().eq('id',id);
+  if(error)throw error;
+}
+async function dbUpsertUserData(uid,testPoints){
+  const {error}=await sb.from('user_data').upsert({user_id:uid,test_points:testPoints});
+  if(error)throw error;
+}
+async function dbUpsertUserScore(uid,wid,score,intervalDays,nextReviewIso){
+  const {error}=await sb.from('user_scores').upsert(
+    {user_id:uid,word_id:wid,score,interval_days:intervalDays,next_review_at:nextReviewIso,updated_at:new Date().toISOString()},
+    {onConflict:'user_id,word_id'});
+  if(error)throw error;
+}
+function syncFail(msg){
+  const el=document.getElementById('sync-error');
+  el.textContent='⚠ '+msg+' — проверьте интернет-соединение';
+  el.style.display='block';
+  clearTimeout(syncFail._t);
+  syncFail._t=setTimeout(()=>el.style.display='none',4000);
+}
+// Live sync: if Denis adds a word while Sergei has the app open, Sergei's
+// screen updates without a refresh. Silently does nothing if the project
+// hasn't enabled Realtime for these tables (see setup SQL) — everything
+// else keeps working either way.
+function setupRealtime(){
+  sb.channel('dansk-ordbog-sync')
+    .on('postgres_changes',{event:'*',schema:'public',table:'words'},async()=>{
+      const {data,error}=await sb.from('words').select('*').order('id');
+      if(!error){words=data.map(rowToWord);renderDict();}
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'decks'},async()=>{
+      const {data,error}=await sb.from('decks').select('*').order('id');
+      if(!error){decks=data.map(rowToDeck);renderDecks();syncDeckSelect();}
+    })
+    .subscribe();
+}
 
 /* ══════════════════════════════════════════════
    SEED
@@ -638,6 +696,28 @@ const USERS=[
 ];
 
 /* ══════════════════════════════════════════════
+   PRONUNCIATION (Web Speech API)
+   Danish spelling and pronunciation diverge a lot,
+   so every Danish word gets a speaker button.
+══════════════════════════════════════════════ */
+let daVoice=null;
+function primeVoices(){
+  if(!('speechSynthesis' in window))return;
+  const pick=()=>{const v=speechSynthesis.getVoices();daVoice=v.find(x=>x.lang&&x.lang.toLowerCase().startsWith('da'))||null;};
+  pick();
+  speechSynthesis.onvoiceschanged=pick;
+}
+function speakDanish(text){
+  if(!('speechSynthesis' in window)){toast('Голосовой движок недоступен в этом браузере');return}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='da-DK'; u.rate=0.88;
+  if(daVoice)u.voice=daVoice;
+  speechSynthesis.speak(u);
+}
+primeVoices();
+
+/* ══════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════ */
 let words=[],decks=[];
@@ -653,28 +733,42 @@ let selGame=1,queue=[],qIdx=0,results={},lastSetup=null;
 ══════════════════════════════════════════════ */
 async function init(){
   try{
-    await openDB();
-    // Load words
-    let ex=await dbGetAll('words');
-    if(!ex.length){ for(const w of SEED)await dbAdd('words',{...w}); ex=await dbGetAll('words'); }
-    words=ex;
-    decks=await dbGetAll('decks');
-    // Load user data
+    let{data:wRows,error:we}=await sb.from('words').select('*').order('id');
+    if(we)throw we;
+    if(!wRows.length){
+      // Fresh database — plant the starter word list once so the app isn't empty.
+      for(const w of SEED){const{error}=await sb.from('words').insert(wordToRow(w));if(error)throw error;}
+      ({data:wRows,error:we}=await sb.from('words').select('*').order('id'));
+      if(we)throw we;
+    }
+    words=wRows.map(rowToWord);
+
+    const{data:dRows,error:de}=await sb.from('decks').select('*').order('id');
+    if(de)throw de;
+    decks=dRows.map(rowToDeck);
+
+    const{data:udRows,error:ude}=await sb.from('user_data').select('*');
+    if(ude)throw ude;
     for(const u of USERS){
-      let ud=await dbGet('userdata',u.uid);
-      if(!ud){ ud={uid:u.uid,testPoints:0}; await dbPut('userdata',ud); }
-      userDataMap[u.uid]=ud;
+      const found=udRows.find(r=>r.user_id===u.uid);
+      if(found){userDataMap[u.uid]={uid:u.uid,testPoints:found.test_points};}
+      else{userDataMap[u.uid]={uid:u.uid,testPoints:0};await dbUpsertUserData(u.uid,0);}
     }
-    // Load user scores
-    const allScores=await dbGetAll('userscores');
-    for(const u of USERS) userScores[u.uid]={};
-    for(const s of allScores){
-      if(userScores[s.uid]) userScores[s.uid][s.wid]=s.score;
+
+    const{data:usRows,error:use}=await sb.from('user_scores').select('*');
+    if(use)throw use;
+    for(const u of USERS)userScores[u.uid]={};
+    for(const r of usRows){
+      if(userScores[r.user_id])userScores[r.user_id][r.word_id]={score:r.score,interval:r.interval_days||0,nextReview:r.next_review_at};
     }
+
     document.getElementById('loading-screen').style.display='none';
     showLogin();
+    setupRealtime();
   }catch(err){
-    document.getElementById('loading-screen').innerHTML=`<span style="color:var(--danger)">Ошибка БД: ${err.message}</span>`;
+    document.getElementById('loading-screen').innerHTML=
+      `<span style="color:var(--danger);text-align:center;max-width:300px">⚠ Не удалось подключиться к Supabase<br><span style="font-size:12px;color:var(--muted)">${(err&&err.message)||err}</span></span>
+       <button onclick="location.reload()" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:sans-serif;cursor:pointer">Повторить</button>`;
   }
 }
 
@@ -715,7 +809,7 @@ function getUserXP(uid){
   // testPoints + 1 per word with score>=2
   const ud=userDataMap[uid]||{testPoints:0};
   const sc=userScores[uid]||{};
-  const wordXP=Object.values(sc).filter(s=>s>=2).length;
+  const wordXP=Object.values(sc).filter(s=>s.score>=2).length;
   return ud.testPoints + wordXP;
 }
 
@@ -763,22 +857,39 @@ async function addTestPoints(pts){
   const uid=currentUser.uid;
   const ud=userDataMap[uid];
   ud.testPoints+=pts;
-  await dbPut('userdata',ud);
+  try{await dbUpsertUserData(uid,ud.testPoints);}catch(err){syncFail('Очки не сохранены');}
   updateHeaderUser();
 }
 
-function getUserScore(wid){
+// Score record shape: {score:0-3, interval: days until due again, nextReview: ISO date string|null}
+function getUserScoreData(wid){
+  if(!currentUser)return{score:0,interval:0,nextReview:null};
+  return (userScores[currentUser.uid]||{})[wid]||{score:0,interval:0,nextReview:null};
+}
+function getUserScore(wid){return getUserScoreData(wid).score}
+// A word is "due" if it's never been scheduled yet, or its review date has passed.
+function isDue(wid){
+  const d=getUserScoreData(wid).nextReview;
+  return !d||new Date(d)<=new Date();
+}
+function getDueCount(){
   if(!currentUser)return 0;
-  return (userScores[currentUser.uid]||{})[wid]||0;
+  return words.filter(w=>isDue(w.id)).length;
 }
 
-async function setUserScore(wid,score){
+// Lightweight spaced repetition: correct answers push the next review out
+// (1 day → 2 → 4 …, capped at 60), a wrong answer brings it back to "due now".
+async function setUserScore(wid,correct){
   if(!currentUser)return;
   const uid=currentUser.uid;
-  if(!userScores[uid]) userScores[uid]={};
-  userScores[uid][wid]=score;
-  const key=`${uid}_${wid}`;
-  await dbPut('userscores',{key,uid,wid,score});
+  const prev=getUserScoreData(wid);
+  const newScore=correct?Math.min(3,prev.score+1):Math.max(0,prev.score-1);
+  const newInterval=correct?(prev.interval<1?1:Math.min(60,prev.interval*2)):0;
+  const nextReview=new Date(Date.now()+newInterval*86400000).toISOString();
+  if(!userScores[uid])userScores[uid]={};
+  userScores[uid][wid]={score:newScore,interval:newInterval,nextReview};
+  try{await dbUpsertUserScore(uid,wid,newScore,newInterval,nextReview);}
+  catch(err){syncFail('Прогресс не сохранён');}
   updateHeaderUser();
 }
 
@@ -792,7 +903,7 @@ function renderStatusPage(){
     const prog=getLevelProgress(u.uid);
     const ud=userDataMap[u.uid]||{testPoints:0};
     const sc=userScores[u.uid]||{};
-    const knownWords=Object.values(sc).filter(s=>s>=2).length;
+    const knownWords=Object.values(sc).filter(s=>s.score>=2).length;
     const isMe=currentUser&&u.uid===currentUser.uid;
     return `<div class="profile-card${isMe?' me':''}">
       <div class="pc-avatar">${u.avatar}</div>
@@ -869,7 +980,7 @@ function cardHtml(w){
   </div></div>`;
   return `<div class="card ${isV?'verb':'other'}">
     <div class="card-top">
-      <div class="word-da">${w.da}</div>
+      <div class="word-da-row"><div class="word-da">${w.da}</div><button class="speak-btn" onclick="speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button></div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="score-dot ${sd(sc)}" title="Счёт: ${sc}"></div>
         <span class="badge ${isV?'badge-verb':'badge-other'}">${isV?'verb':'ord'}</span>
@@ -886,11 +997,21 @@ function cardHtml(w){
 }
 function renderStats(){
   if(!currentUser)return;
-  const v=words.filter(w=>w.type==='verb').length,o=words.filter(w=>w.type==='other').length;
+  const v=words.filter(w=>w.type==='verb').length,o=words.filter(w=>w.type==='other').length,due=getDueCount();
   document.getElementById('stats').innerHTML=`
     <div class="spill">📚 <b>${words.length}</b></div>
     <div class="spill" style="color:var(--verb-color)">🔷 <b>${v}</b></div>
-    <div class="spill" style="color:var(--noun-color)">🟢 <b>${o}</b></div>`;
+    <div class="spill" style="color:var(--noun-color)">🟢 <b>${o}</b></div>
+    <div class="spill due" title="Слова, готовые к повторению" onclick="goPracticeDue()">⏰ <b>${due}</b></div>`;
+}
+function goPracticeDue(){
+  document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelector('.nav-tab[data-view="v-practice"]').classList.add('active');
+  document.getElementById('v-practice').classList.add('active');
+  syncDeckSelect();
+  const dueRadio=document.querySelector('[name="src"][value="due"]');
+  if(dueRadio){dueRadio.checked=true;dueRadio.closest('.ropt').click();}
 }
 function renderDict(){
   renderStats();
@@ -908,7 +1029,8 @@ document.getElementById('sort').onchange=e=>{dictSort=e.target.value;renderDict(
 document.getElementById('search').oninput=renderDict;
 async function delWord(id){
   if(!confirm('Удалить это слово?'))return;
-  await dbDel('words',id); words=words.filter(w=>w.id!==id); renderDict();
+  try{await dbDeleteWord(id);}catch(err){syncFail('Не удалось удалить слово');return;}
+  words=words.filter(w=>w.id!==id); renderDict();
 }
 
 /* WORD MODAL */
@@ -945,32 +1067,39 @@ document.getElementById('btn-save').onclick=async()=>{
     example:document.getElementById('f-ex').value.trim(),
     verbForms:isV?{inf:document.getElementById('f-inf').value.trim(),present:document.getElementById('f-pres').value.trim(),
       past:document.getElementById('f-past').value.trim(),perfect:document.getElementById('f-perf').value.trim()}:null};
-  if(editId){
-    entry.id=editId; await dbPut('words',entry);
-    const i=words.findIndex(w=>w.id===editId); if(i>=0)words[i]=entry;
-  }else{
-    const id=await dbAdd('words',entry); entry.id=id; words.push(entry);
-  }
+  try{
+    if(editId){
+      await dbUpdateWord(editId,entry);
+      entry.id=editId;
+      const i=words.findIndex(w=>w.id===editId); if(i>=0)words[i]=entry;
+    }else{
+      const saved=await dbAddWord(entry); words.push(saved);
+    }
+  }catch(err){syncFail('Не удалось сохранить слово');return;}
   closeModal(); renderDict(); toast(editId?'Слово обновлено ✓':'Слово добавлено ✓');
 };
 
 /* EXPORT/IMPORT */
 document.getElementById('exp-btn').onclick=async()=>{
-  // Collect all data from IndexedDB
-  const allUserscores=await dbGetAll('userscores');
-  const allUserdata=await dbGetAll('userdata');
-  const allDecks=await dbGetAll('decks');
-  const backup={
-    version:2,
-    exportedAt:new Date().toISOString(),
-    words,
-    decks:allDecks,
-    userdata:allUserdata,
-    userscores:allUserscores
-  };
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
-  a.download='dansk_ordbog_backup.json'; a.click(); toast('Экспорт готов ✓');
+  try{
+    const[{data:dRows,error:de},{data:udRows,error:ude},{data:usRows,error:use}]=await Promise.all([
+      sb.from('decks').select('*').order('id'),
+      sb.from('user_data').select('*'),
+      sb.from('user_scores').select('*')
+    ]);
+    if(de||ude||use)throw(de||ude||use);
+    const backup={
+      version:2,
+      exportedAt:new Date().toISOString(),
+      words,
+      decks:dRows.map(rowToDeck),
+      userdata:udRows.map(r=>({uid:r.user_id,testPoints:r.test_points})),
+      userscores:usRows.map(r=>({uid:r.user_id,wid:r.word_id,score:r.score,interval:r.interval_days,nextReview:r.next_review_at}))
+    };
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
+    a.download='dansk_ordbog_backup.json'; a.click(); toast('Экспорт готов ✓');
+  }catch(err){syncFail('Не удалось экспортировать данные');}
 };
 document.getElementById('imp-btn').onclick=()=>document.getElementById('imp-file').click();
 document.getElementById('imp-file').onchange=async e=>{
@@ -983,47 +1112,56 @@ document.getElementById('imp-file').onchange=async e=>{
     const hasFullBackup=!Array.isArray(data)&&data.version===2;
     const deckCount=(data.decks||[]).length;
     const confirmMsg=hasFullBackup
-      ?`Импортировать полный бэкап?\n• ${inc.length} слов\n• ${deckCount} наборов\n• XP и прогресс игроков\n\nТекущие данные будут заменены.`
-      :`Импортировать ${inc.length} слов? Текущие данные будут заменены.`;
+      ?`Импортировать полный бэкап?\n• ${inc.length} слов\n• ${deckCount} наборов\n• XP и прогресс игроков\n\nТекущие данные в облаке будут заменены.`
+      :`Импортировать ${inc.length} слов? Текущий словарь в облаке будет заменён.`;
     if(!confirm(confirmMsg))return;
+    toast('Импорт... это может занять немного времени');
 
-    // Restore words — preserve original IDs so deck.wordIds still match
-    await dbClr('words');
+    // Words get fresh ids from Postgres, so we track old id → new id to
+    // keep deck membership and per-word scores pointing at the right word.
+    const{error:delWErr}=await sb.from('words').delete().gt('id',0);
+    if(delWErr)throw delWErr;
+    const idMap={},newWords=[];
     for(const w of inc){
-      const r={...w};delete r.score;
-      if(r.id){await dbPut('words',r)}else{const{id,...rr}=r;await dbAdd('words',rr)}
+      const clean={da:w.da,ru:w.ru||'',type:w.type==='verb'?'verb':'other',example:w.example||'',verbForms:w.verbForms||null};
+      const saved=await dbAddWord(clean);
+      if(w.id!=null)idMap[w.id]=saved.id;
+      newWords.push(saved);
     }
-    words=await dbGetAll('words');
+    words=newWords;
 
-    // Restore decks (if full backup)
+    const{error:delDErr}=await sb.from('decks').delete().gt('id',0);
+    if(delDErr)throw delDErr;
     if(hasFullBackup&&data.decks&&data.decks.length){
-      await dbClr('decks');
-      for(const d of data.decks){const{id,...r}=d;await dbAdd('decks',r)}
-      decks=await dbGetAll('decks');
-    }
+      const newDecks=[];
+      for(const d of data.decks){
+        const wordIds=(d.wordIds||[]).map(oid=>idMap[oid]).filter(x=>x!=null);
+        newDecks.push(await dbAddDeck({name:d.name,wordIds}));
+      }
+      decks=newDecks;
+    }else decks=[];
 
-    // Restore userdata (XP / testPoints)
     if(hasFullBackup&&data.userdata&&data.userdata.length){
-      await dbClr('userdata');
-      for(const ud of data.userdata){await dbPut('userdata',ud)}
-      for(const ud of data.userdata){if(userDataMap[ud.uid]!==undefined)userDataMap[ud.uid]=ud}
+      for(const ud of data.userdata){
+        await dbUpsertUserData(ud.uid,ud.testPoints||0);
+        if(userDataMap[ud.uid]!==undefined)userDataMap[ud.uid]={uid:ud.uid,testPoints:ud.testPoints||0};
+      }
     }
 
-    // Restore userscores (word progress per user)
+    for(const k in userScores)userScores[k]={};
     if(hasFullBackup&&data.userscores&&data.userscores.length){
-      await dbClr('userscores');
-      for(const us of data.userscores){await dbPut('userscores',us)}
-      // Rebuild in-memory userScores map
-      for(const k in userScores) delete userScores[k];
       for(const us of data.userscores){
+        const newWid=idMap[us.wid]; if(newWid==null)continue;
+        const interval=us.interval||0,nextReview=us.nextReview||new Date().toISOString();
+        await dbUpsertUserScore(us.uid,newWid,us.score,interval,nextReview);
         if(!userScores[us.uid])userScores[us.uid]={};
-        userScores[us.uid][us.wid]=us.score;
+        userScores[us.uid][newWid]={score:us.score,interval,nextReview};
       }
     }
 
     renderDict(); renderDecks(); syncDeckSelect(); updateHeaderUser(); renderStatusPage();
     toast(`Импортировано: ${words.length} слов, ${decks.length} наборов ✓`);
-  }catch(err){toast('Ошибка импорта: '+err.message)}
+  }catch(err){toast('Ошибка импорта: '+((err&&err.message)||err))}
   e.target.value='';
 };
 
@@ -1057,7 +1195,8 @@ function openBuilder(deck){
 function editDeck(id){openBuilder(decks.find(d=>d.id===id))}
 async function deleteDeck(id){
   if(!confirm('Удалить набор?'))return;
-  await dbDel('decks',id); decks=decks.filter(d=>d.id!==id); renderDecks(); syncDeckSelect();
+  try{await dbDeleteDeck(id);}catch(err){syncFail('Не удалось удалить набор');return;}
+  decks=decks.filter(d=>d.id!==id); renderDecks(); syncDeckSelect();
 }
 function buildWordSel(selIds=[]){
   const c=document.getElementById('word-sel');
@@ -1081,12 +1220,15 @@ document.getElementById('save-deck-btn').onclick=async()=>{
   const wordIds=getSelIds();
   if(!wordIds.length){toast('Выберите хотя бы одно слово');return}
   const entry={name,wordIds};
-  if(editDeckId){
-    entry.id=editDeckId; await dbPut('decks',entry);
-    const i=decks.findIndex(d=>d.id===editDeckId);if(i>=0)decks[i]=entry;
-  }else{
-    const id=await dbAdd('decks',entry); entry.id=id; decks.push(entry);
-  }
+  try{
+    if(editDeckId){
+      await dbUpdateDeck(editDeckId,entry);
+      entry.id=editDeckId;
+      const i=decks.findIndex(d=>d.id===editDeckId);if(i>=0)decks[i]=entry;
+    }else{
+      const saved=await dbAddDeck(entry); decks.push(saved);
+    }
+  }catch(err){syncFail('Не удалось сохранить набор');return;}
   document.getElementById('deck-builder').style.display='none'; editDeckId=null;
   renderDecks(); syncDeckSelect(); toast('Набор сохранён ✓');
 };
@@ -1137,6 +1279,8 @@ function buildQueue(){
   }else if(src==='count'){
     const n=Math.max(1,+document.getElementById('word-count').value||10);
     pool=pool.slice().sort((a,b)=>getUserScore(a.id)-getUserScore(b.id)).slice(0,n);
+  }else if(src==='due'){
+    pool=pool.filter(w=>isDue(w.id));
   }
   return shuffle(pool);
 }
@@ -1175,11 +1319,12 @@ function showFC(){
   const w=queue[qIdx],dir=getDir();
   const fw=dir==='da2ru'?w.da:w.ru,bw=dir==='da2ru'?w.ru:w.da;
   const fl=dir==='da2ru'?'Датское слово':'Русский перевод',bl=dir==='da2ru'?'Перевод':'Датское слово';
+  const spk=`<button class="speak-btn speak-btn-lg" onclick="event.stopPropagation();speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button>`;
   updateProg();
   document.getElementById('game-body').innerHTML=`<div style="width:100%;max-width:480px">
     <div class="fc-scene"><div class="fc" id="fc" onclick="flipFC()">
-      <div class="fc-face fc-front"><div class="fc-lbl">${fl}</div><div class="fc-word">${fw}</div><div class="fc-hint">Нажмите, чтобы перевернуть</div></div>
-      <div class="fc-face fc-back"><div class="fc-lbl">${bl}</div><div class="fc-word">${bw}</div>${w.example?`<div class="fc-ex">${w.example}</div>`:''}</div>
+      <div class="fc-face fc-front"><div class="fc-lbl">${fl}</div><div class="fc-word-row"><div class="fc-word">${fw}</div>${dir==='da2ru'?spk:''}</div><div class="fc-hint">Нажмите, чтобы перевернуть</div></div>
+      <div class="fc-face fc-back"><div class="fc-lbl">${bl}</div><div class="fc-word-row"><div class="fc-word">${bw}</div>${dir==='ru2da'?spk:''}</div>${w.example?`<div class="fc-ex">${w.example}</div>`:''}</div>
     </div></div>
     <div class="fc-btns" id="fc-btns" style="display:none">
       <button class="fc-btn fc-dunno" onclick="fcAns(false)">✗ Не знаю</button>
@@ -1191,10 +1336,8 @@ function showFC(){
 function flipFC(){document.getElementById('fc').classList.toggle('flipped');document.getElementById('fc-btns').style.display='flex'}
 async function fcAns(know){
   const w=queue[qIdx];
-  const prevSc=getUserScore(w.id);
-  const newSc=know?Math.min(3,prevSc+1):Math.max(0,prevSc-1);
   if(know)results.correct++; else{results.wrong++;results.mistakes.push({w,type:'fc'})}
-  await setUserScore(w.id,newSc);
+  await setUserScore(w.id,know);
   qIdx++; showFC();
 }
 
@@ -1205,7 +1348,7 @@ function showVC(){
   updateProg();
   document.getElementById('game-body').innerHTML=`<div class="vg-card">
     <div class="vg-plbl">Глагол на датском</div>
-    <div class="vg-word">${w.da}</div>
+    <div class="vg-word-row"><div class="vg-word">${w.da}</div><button class="speak-btn speak-btn-lg" onclick="speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button></div>
     <div class="vg-ru">${w.ru||''}</div>
     <div class="vg-flbl">Прошедшее время</div>
     <input class="vg-inp" id="vg-inp" placeholder="Введите ответ..." autocomplete="off" autocorrect="off" spellcheck="false">
@@ -1229,12 +1372,11 @@ async function vcCheck(){
   inp.classList.add(ok?'ok':'err'); inp.disabled=true;
   document.getElementById('vg-fb').textContent=ok?'✓ Правильно!':'✗ Неправильно';
   document.getElementById('vg-fb').className='vg-fb '+(ok?'ok':'err');
-  if(!ok)document.getElementById('vg-ans').textContent=`Правильный ответ: ${correct}`;
+  if(!ok)document.getElementById('vg-ans').innerHTML=`Правильный ответ: ${correct} <button class="speak-btn" style="vertical-align:middle" onclick="speakDanish('${escQ(correct)}')" title="Произношение">🔊</button>`;
   document.getElementById('vg-check').style.display='none';
   document.getElementById('vg-skip').style.display='none';
   document.getElementById('vg-next').style.display='inline-block';
-  const prevSc=getUserScore(w.id);
-  await setUserScore(w.id,ok?Math.min(3,prevSc+1):Math.max(0,prevSc-1));
+  await setUserScore(w.id,ok);
   if(ok)results.correct++; else{results.wrong++;results.mistakes.push({w,ans,type:'verb'})}
 }
 function vcSkip(){const w=queue[qIdx];results.wrong++;results.mistakes.push({w,ans:'(пропущено)',type:'verb'});qIdx++;showVC()}
@@ -1254,7 +1396,7 @@ function showQuiz(){
   updateProg();
   document.getElementById('game-body').innerHTML=`<div class="quiz-card">
     <div class="qz-q-lbl">${qLabel}</div>
-    <div class="qz-word">${question}</div>
+    <div class="fc-word-row"><div class="qz-word">${question}</div>${dir==='da2ru'?`<button class="speak-btn speak-btn-lg" onclick="speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button>`:''}</div>
     <div class="qz-opts" id="qz-opts">
       ${opts.map((o,i)=>`<button class="qz-opt" onclick="qzAnswer(this,'${escQ(o)}','${escQ(answer)}')">${o}</button>`).join('')}
     </div>
@@ -1272,15 +1414,14 @@ async function qzAnswer(btn,chosen,correct){
     else if(b===btn&&!ok)b.classList.add('wrong');
   });
   const ptsEl=document.getElementById('qz-pts');
-  const prevSc=getUserScore(w.id);
   if(ok){
     results.correct++; results.testPtsEarned++;
-    await setUserScore(w.id,Math.min(3,prevSc+1));
+    await setUserScore(w.id,true);
     await addTestPoints(1);
     ptsEl.textContent='+1 XP 🌟';
   }else{
     results.wrong++; results.mistakes.push({w,type:'quiz',ans:chosen});
-    await setUserScore(w.id,Math.max(0,prevSc-1));
+    await setUserScore(w.id,false);
     ptsEl.textContent='';
   }
   document.getElementById('qz-next').style.display='inline-block';
