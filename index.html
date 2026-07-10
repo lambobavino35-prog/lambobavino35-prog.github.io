@@ -466,6 +466,10 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
         <label class="ropt"><input type="radio" name="src" value="count">Количество</label>
         <label class="ropt"><input type="radio" name="src" value="deck">Набор</label>
       </div>
+      <div class="cfg-field" id="cfg-due" style="display:none">
+        <input type="number" id="due-count" value="20" min="0" max="300">
+        <div class="cfg-hint">Сначала самые просроченные. 0 = без ограничения (все слова)</div>
+      </div>
       <div class="cfg-field" id="cfg-count" style="display:none">
         <input type="number" id="word-count" value="10" min="3" max="300">
         <div class="cfg-hint">Выберутся слова с наименьшим счётом</div>
@@ -876,6 +880,12 @@ function getDueCount(){
   if(!currentUser)return 0;
   return words.filter(w=>isDue(w.id)).length;
 }
+// Lower = more overdue. Never-scheduled words count as maximally overdue,
+// so brand-new words surface before ones that are merely a day late.
+function overdueSortKey(wid){
+  const d=getUserScoreData(wid).nextReview;
+  return d?new Date(d).getTime():-Infinity;
+}
 
 // Lightweight spaced repetition: correct answers push the next review out
 // (1 day → 2 → 4 …, capped at 60), a wrong answer brings it back to "due now".
@@ -1256,6 +1266,7 @@ initRadios('#src-row .ropt');
 initRadios('#dir-row .ropt');
 document.querySelectorAll('[name="src"]').forEach(inp=>{
   inp.onchange=()=>{
+    document.getElementById('cfg-due').style.display=inp.value==='due'?'block':'none';
     document.getElementById('cfg-count').style.display=inp.value==='count'?'block':'none';
     document.getElementById('cfg-deck').style.display=inp.value==='deck'?'block':'none';
   };
@@ -1280,7 +1291,9 @@ function buildQueue(){
     const n=Math.max(1,+document.getElementById('word-count').value||10);
     pool=pool.slice().sort((a,b)=>getUserScore(a.id)-getUserScore(b.id)).slice(0,n);
   }else if(src==='due'){
-    pool=pool.filter(w=>isDue(w.id));
+    pool=pool.filter(w=>isDue(w.id)).sort((a,b)=>overdueSortKey(a.id)-overdueSortKey(b.id));
+    const limit=+document.getElementById('due-count').value||0;
+    if(limit>0)pool=pool.slice(0,limit);
   }
   return shuffle(pool);
 }
