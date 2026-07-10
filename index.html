@@ -110,8 +110,8 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
 .score-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
 .sd0{background:var(--muted)}.sd1{background:#f97316}.sd2{background:#facc15}.sd3{background:var(--success)}
 .score-row{display:flex;gap:6px;margin:1px 0 6px}
-.score-chip{font-size:10px;font-family:sans-serif;padding:2px 7px;border-radius:10px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;border:1px solid var(--border)}
-.score-chip.sd0{color:var(--muted)}.score-chip.sd1{color:#f97316}.score-chip.sd2{color:#facc15}.score-chip.sd3{color:var(--success)}
+.score-chip{font-size:10px;font-family:sans-serif;padding:2px 7px;border-radius:10px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;border:1px solid var(--border);background:var(--surface2)}
+.score-chip.lvl0{color:var(--muted)}.score-chip.lvl1{color:#f97316}.score-chip.lvl2{color:#facc15}.score-chip.lvl3{color:var(--success)}
 
 /* ══ AUDIO ══ */
 .speak-btn{background:none;border:1px solid var(--border);color:var(--accent2);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0;transition:all .15s;padding:0}
@@ -985,7 +985,7 @@ function getFiltered(){
 // Interval days -> readable "level" label, matching the 1-2-4-8-16-32-60 schedule
 const LEVEL_LABELS={0:'новое',1:'1 день',2:'2 дня',4:'4 дня',8:'8 дней',16:'16 дней',32:'32 дня',60:'60 дней · макс'};
 function levelLabel(interval){return LEVEL_LABELS[interval]!==undefined?LEVEL_LABELS[interval]:interval+' дн.'}
-function levelClass(interval){return interval>=16?'sd3':interval>=4?'sd2':interval>=1?'sd1':'sd0'}
+function levelClass(interval){return interval>=16?'lvl3':interval>=4?'lvl2':interval>=1?'lvl1':'lvl0'}
 function cardHtml(w){
   const isV=w.type==='verb';
   let vb='';
