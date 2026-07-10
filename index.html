@@ -109,6 +109,9 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
 .act:hover{border-color:var(--accent);color:var(--accent)}.act.del:hover{border-color:var(--danger);color:var(--danger)}
 .score-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
 .sd0{background:var(--muted)}.sd1{background:#f97316}.sd2{background:#facc15}.sd3{background:var(--success)}
+.score-row{display:flex;gap:6px;margin:1px 0 6px}
+.score-chip{font-size:10px;font-family:sans-serif;padding:2px 7px;border-radius:10px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;border:1px solid var(--border)}
+.score-chip.sd0{color:var(--muted)}.score-chip.sd1{color:#f97316}.score-chip.sd2{color:#facc15}.score-chip.sd3{color:var(--success)}
 
 /* ══ AUDIO ══ */
 .speak-btn{background:none;border:1px solid var(--border);color:var(--accent2);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0;transition:all .15s;padding:0}
@@ -979,8 +982,12 @@ function getFiltered(){
   if(dictSort==='score')l.sort((a,b)=>getUserScore(a.id)-getUserScore(b.id));
   return l;
 }
+// Interval days -> readable "level" label, matching the 1-2-4-8-16-32-60 schedule
+const LEVEL_LABELS={0:'новое',1:'1 день',2:'2 дня',4:'4 дня',8:'8 дней',16:'16 дней',32:'32 дня',60:'60 дней · макс'};
+function levelLabel(interval){return LEVEL_LABELS[interval]!==undefined?LEVEL_LABELS[interval]:interval+' дн.'}
+function levelClass(interval){return interval>=16?'sd3':interval>=4?'sd2':interval>=1?'sd1':'sd0'}
 function cardHtml(w){
-  const isV=w.type==='verb',sc=getUserScore(w.id);
+  const isV=w.type==='verb';
   let vb='';
   if(isV&&w.verbForms)vb=`<div class="verb-box"><div class="verb-box-title">Формы глагола</div><div class="forms">
     <div class="form-row"><span class="fl">Инфинитив</span><span class="fv">${w.verbForms.inf||'—'}</span></div>
@@ -988,14 +995,15 @@ function cardHtml(w){
     <div class="form-row"><span class="fl">Прошедшее</span><span class="fv">${w.verbForms.past||'—'}</span></div>
     <div class="form-row"><span class="fl">Перфект</span><span class="fv">${w.verbForms.perfect||'—'}</span></div>
   </div></div>`;
+  const sc=getUserScoreData(w.id);
+  const nextTxt=sc.nextReview?new Date(sc.nextReview).toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):null;
+  const levelChip=`<span class="score-chip ${levelClass(sc.interval)}" title="${nextTxt?'Следующее повторение: '+nextTxt:'Ещё не повторяли'}">⏱ ${levelLabel(sc.interval)}</span>`;
   return `<div class="card ${isV?'verb':'other'}">
     <div class="card-top">
       <div class="word-da-row"><div class="word-da">${w.da}</div><button class="speak-btn" onclick="speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button></div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div class="score-dot ${sd(sc)}" title="Счёт: ${sc}"></div>
-        <span class="badge ${isV?'badge-verb':'badge-other'}">${isV?'verb':'ord'}</span>
-      </div>
+      <span class="badge ${isV?'badge-verb':'badge-other'}">${isV?'verb':'ord'}</span>
     </div>
+    <div class="score-row">${levelChip}</div>
     <div class="word-ru">${w.ru||'<span style="color:var(--muted);font-style:italic">нет перевода</span>'}</div>
     ${w.example?`<div class="example">${w.example}</div>`:''}
     ${vb}
