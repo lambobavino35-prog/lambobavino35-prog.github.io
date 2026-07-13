@@ -281,7 +281,7 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
 .rs{background:var(--surface2);border-radius:10px;padding:12px}
 .rs-val{font-size:26px;font-weight:700;color:var(--text)}
 .rs-lbl{font-size:11px;color:var(--muted);font-family:sans-serif;margin-top:2px}
-.rs.good .rs-val{color:var(--success)}.rs.bad .rs-val{color:var(--danger)}.rs.pts .rs-val{color:var(--accent)}
+.rs.good .rs-val{color:var(--success)}.rs.bad .rs-val{color:var(--danger)}.rs.pts .rs-val{color:var(--accent)}.rs.aeon .rs-val{color:var(--accent2)}
 .res-status-upd{background:#1e1a10;border:1px solid var(--accent);border-radius:12px;padding:14px;margin-bottom:16px;font-family:sans-serif;font-size:14px;color:var(--accent);display:none}
 .res-mistakes{text-align:left;max-height:130px;overflow-y:auto;margin-bottom:18px}
 .res-mistakes h4{font-size:12px;font-family:sans-serif;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
@@ -323,6 +323,14 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
 .lr-name{font-size:14px;font-weight:700;color:var(--text);font-family:sans-serif}
 .lr-req{font-size:11px;color:var(--muted);font-family:sans-serif}
 .lr-badge{font-size:11px;color:var(--accent);font-family:sans-serif;font-weight:700}
+.aeon-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:24px}
+.aeon-reset{font-size:11px;color:var(--muted);font-family:sans-serif;margin-bottom:14px}
+.aeon-row{margin-bottom:10px}
+.aeon-row-label{font-size:12px;color:var(--text);font-family:sans-serif;display:flex;justify-content:space-between;margin-bottom:4px}
+.aeon-row-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.aeon-row-fill{height:100%;background:var(--accent2);border-radius:3px;transition:width .4s ease}
+.aeon-rules{font-size:11px;color:var(--muted);font-family:sans-serif;line-height:1.6;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.aeon-rules b{color:var(--text)}
 
 @media(max-width:600px){
   header{padding:12px 14px 0}
@@ -499,6 +507,8 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
     <div class="page-h">🏅 Статус игроков</div>
     <div class="page-sub">Сравнение прогресса и уровни</div>
     <div class="compare-grid" id="compare-grid"></div>
+    <div class="levels-title">Aeon сегодня</div>
+    <div class="aeon-panel" id="aeon-panel"></div>
     <div class="levels-title">Все уровни</div>
     <div class="levels-list" id="levels-list"></div>
   </div>
@@ -554,6 +564,18 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
   </div>
 </div>
 
+<!-- STREAK MODAL -->
+<div class="overlay" id="streak-overlay">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <div id="streak-icon" style="font-size:44px;line-height:1;margin-bottom:10px">🔥</div>
+    <h2 id="streak-title" style="margin-bottom:8px">—</h2>
+    <p id="streak-msg" style="color:var(--muted);font-family:sans-serif;font-size:14px;line-height:1.5;margin-bottom:4px"></p>
+    <div class="modal-btns">
+      <button class="btn-save" id="streak-ok" style="width:100%">Понятно</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <div id="sync-error"></div>
 <script>
@@ -584,6 +606,53 @@ const LEVELS = [
 const SUPABASE_URL='https://vwfsiovtjcthvkvrpswi.supabase.co';
 const SUPABASE_KEY='sb_publishable_zbqT_BhBoA6swHezmfSS_g_NWt67sQR';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+/* ══════════════════════════════════════════════
+   AEON — reward bridge
+   Separate Supabase project (AeonBank). Dansk Ordbog never touches
+   Aeon's tables directly — it only calls two narrow RPCs that live
+   in the Aeon project and enforce their own daily caps / one-time-only
+   rules server-side, so the limits hold even if this file is opened
+   in devtools. Fill in the three CONFIG values below after running
+   aeon_learning_rewards.sql against the Aeon project.
+══════════════════════════════════════════════ */
+const AEON_URL='https://xbdtksfzhsfrrayvseop.supabase.co';
+const AEON_KEY='sb_publishable_mLPeo0SqWfGr1iIfmW63uw_VSBI5kfM'; // Aeon's own publishable key — same kind of key as SUPABASE_KEY above, safe client-side
+const aeon=supabase.createClient(AEON_URL,AEON_KEY);
+
+const AEON_CONFIG={
+  secret:'REPLACE_WITH_LONG_RANDOM_SECRET',       // must match the p_secret check inside aeon_learning_rewards.sql
+  username:{denis:'REPLACE_DENIS_AEON_USERNAME', sergei:'REPLACE_SERGEI_AEON_USERNAME'} // Aeon usernames, not Dansk Ordbog uids
+};
+
+// Calls award_learning_reward in the Aeon project. Returns the amount actually
+// credited — 0 if today's cap for this event type was already hit, or this
+// exact one-time milestone (ref_id) was already paid. Both checks happen
+// server-side in Postgres, not here, so they can't be skipped from the client.
+async function awardAeon(eventType,amount,refId,memo){
+  if(!currentUser)return 0;
+  const username=AEON_CONFIG.username[currentUser.uid];
+  if(!username||username.startsWith('REPLACE_'))return 0; // not configured yet — rest of the app is unaffected
+  try{
+    const {data,error}=await aeon.rpc('award_learning_reward',{
+      p_secret:AEON_CONFIG.secret, p_username:username, p_amount:amount,
+      p_event_type:eventType, p_ref_id:refId||null, p_memo:memo||'Dansk Ordbog'
+    });
+    if(error){console.warn('Aeon award failed',error);return 0}
+    return Number(data)||0;
+  }catch(err){console.warn('Aeon award failed',err);return 0}
+}
+// Reads today's usage per event type, for the limits panel on the Status page.
+async function getAeonUsageToday(){
+  if(!currentUser)return [];
+  const username=AEON_CONFIG.username[currentUser.uid];
+  if(!username||username.startsWith('REPLACE_'))return [];
+  try{
+    const {data,error}=await aeon.rpc('get_reward_usage_today',{p_secret:AEON_CONFIG.secret,p_username:username});
+    if(error){console.warn('Aeon usage fetch failed',error);return []}
+    return data||[];
+  }catch(err){console.warn('Aeon usage fetch failed',err);return []}
+}
 
 // row (snake_case, as stored in Postgres) <-> app object (camelCase) mapping,
 // so the rest of the app below can keep working with the same shapes as before
@@ -618,6 +687,10 @@ async function dbDeleteDeck(id){
 }
 async function dbUpsertUserData(uid,testPoints){
   const {error}=await sb.from('user_data').upsert({user_id:uid,test_points:testPoints});
+  if(error)throw error;
+}
+async function dbUpsertStreak(uid,streak,lastPracticeDate,lastPopupDate){
+  const {error}=await sb.from('user_data').upsert({user_id:uid,streak,last_practice_date:lastPracticeDate,last_popup_date:lastPopupDate});
   if(error)throw error;
 }
 async function dbUpsertUserScore(uid,wid,score,intervalDays,nextReviewIso){
@@ -758,8 +831,8 @@ async function init(){
     if(ude)throw ude;
     for(const u of USERS){
       const found=udRows.find(r=>r.user_id===u.uid);
-      if(found){userDataMap[u.uid]={uid:u.uid,testPoints:found.test_points};}
-      else{userDataMap[u.uid]={uid:u.uid,testPoints:0};await dbUpsertUserData(u.uid,0);}
+      if(found){userDataMap[u.uid]={uid:u.uid,testPoints:found.test_points,streak:found.streak||0,lastPracticeDate:found.last_practice_date||null,lastPopupDate:found.last_popup_date||null};}
+      else{userDataMap[u.uid]={uid:u.uid,testPoints:0,streak:0,lastPracticeDate:null,lastPopupDate:null};await dbUpsertUserData(u.uid,0);}
     }
 
     const{data:usRows,error:use}=await sb.from('user_scores').select('*');
@@ -802,6 +875,7 @@ function loginAs(uid){
   document.getElementById('app').style.display='block';
   updateHeaderUser();
   renderDict(); renderDecks(); syncDeckSelect(); renderStatusPage();
+  checkStreakPopup();
 }
 
 document.getElementById('user-badge').onclick=()=>{
@@ -837,6 +911,73 @@ function getLevelProgress(uid){
   const done=xp-cur.pts;
   return {cur,next,pct:Math.min(100,Math.round(done/range*100)),xp,needed:next.pts,toNext:next.pts-xp};
 }
+
+/* ══════════════════════════════════════════════
+   STREAK
+   Display state (streak count, popup) lives here in Dansk Ordbog's
+   own DB — low stakes if it ever drifts. The actual once-a-day Aeon
+   payout is independently deduplicated server-side in Aeon (event
+   type 'streak', ref_id = today's date), so nothing here can cause
+   a double payout even if this logic is edited or replayed.
+══════════════════════════════════════════════ */
+const LEVEL_UP_AMOUNTS={2:10,3:20,4:35,5:55,6:80,7:110,8:150};
+function todayCPH(){return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Copenhagen'})}
+function addDaysStr(dateStr,delta){const d=new Date(dateStr+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+delta);return d.toISOString().slice(0,10)}
+function weekKeyCPH(){const days=Math.floor(new Date(todayCPH()+'T00:00:00Z').getTime()/86400000);return 'w'+Math.floor(days/7)}
+function dayWord(n){return n===1?'день':n>=2&&n<=4?'дня':'дней'}
+function msUntilMidnightCPH(){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Copenhagen',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(new Date());
+  const get=t=>+parts.find(p=>p.type===t).value;
+  return((23-get('hour'))*3600+(59-get('minute'))*60+(60-get('second')))*1000;
+}
+function fmtCountdown(ms){const t=Math.max(0,Math.round(ms/60000));return`${Math.floor(t/60)}ч ${t%60}м`}
+
+// Shown at most once per calendar day, right after login.
+function checkStreakPopup(){
+  const ud=userDataMap[currentUser.uid];
+  const today=todayCPH();
+  if(ud.lastPopupDate===today)return;
+  const yesterday=addDaysStr(today,-1);
+  ud.lastPopupDate=today;
+  dbUpsertStreak(currentUser.uid,ud.streak,ud.lastPracticeDate,ud.lastPopupDate).catch(()=>{});
+  if(!ud.lastPracticeDate)return; // brand new user — nothing to report yet
+  let icon='🔥',title,msg;
+  if(ud.lastPracticeDate===today){
+    title=`${ud.streak} ${dayWord(ud.streak)} подряд`;
+    msg='Уже позанимался сегодня — так держать!';
+  }else if(ud.lastPracticeDate===yesterday){
+    title=`${ud.streak} ${dayWord(ud.streak)} подряд`;
+    msg='Позанимайся сегодня, чтобы продолжить серию.';
+  }else{
+    icon='💤'; title='Серия прервалась';
+    msg='Начинаем заново — позанимайся сегодня, и это будет день 1.';
+  }
+  document.getElementById('streak-icon').textContent=icon;
+  document.getElementById('streak-title').textContent=title;
+  document.getElementById('streak-msg').textContent=msg;
+  document.getElementById('streak-overlay').classList.add('open');
+}
+
+// Call once per finished practice session (any mode, any length — matches
+// "любая сессия, даже короткая"). Updates the streak counter and fires the
+// once-a-day Aeon streak reward, plus 7/30/100-day milestone bonuses.
+async function recordPracticeDay(){
+  const ud=userDataMap[currentUser.uid];
+  const today=todayCPH();
+  if(ud.lastPracticeDate===today)return{streakAeon:0,milestoneAeon:0};
+  const yesterday=addDaysStr(today,-1);
+  ud.streak=(ud.lastPracticeDate===yesterday)?ud.streak+1:1;
+  ud.lastPracticeDate=today;
+  try{await dbUpsertStreak(currentUser.uid,ud.streak,ud.lastPracticeDate,ud.lastPopupDate);}
+  catch(err){syncFail('Стрик не сохранён');}
+  updateHeaderUser();
+  const streakAeon=await awardAeon('streak',5,today,`Стрик: день ${ud.streak}`);
+  const milestones={7:20,30:50,100:150};
+  const milestoneAeon=milestones[ud.streak]?await awardAeon('streak_milestone',milestones[ud.streak],String(ud.streak),`${ud.streak} дней подряд!`):0;
+  return{streakAeon,milestoneAeon};
+}
+document.getElementById('streak-ok').onclick=()=>{document.getElementById('streak-overlay').classList.remove('open')};
+document.getElementById('streak-overlay').onclick=e=>{if(e.target===document.getElementById('streak-overlay'))e.currentTarget.classList.remove('open')};
 
 function updateHeaderUser(){
   if(!currentUser)return;
@@ -893,7 +1034,7 @@ function overdueSortKey(wid){
 // Lightweight spaced repetition: correct answers push the next review out
 // (1 day → 2 → 4 …, capped at 60), a wrong answer brings it back to "due now".
 async function setUserScore(wid,correct){
-  if(!currentUser)return;
+  if(!currentUser)return{prevScore:0,newScore:0};
   const uid=currentUser.uid;
   const prev=getUserScoreData(wid);
   const newScore=correct?Math.min(3,prev.score+1):Math.max(0,prev.score-1);
@@ -904,6 +1045,17 @@ async function setUserScore(wid,correct){
   try{await dbUpsertUserScore(uid,wid,newScore,newInterval,nextReview);}
   catch(err){syncFail('Прогресс не сохранён');}
   updateHeaderUser();
+  return{prevScore:prev.score,newScore};
+}
+// Fires the one-time "word learned" / "word mastered" Aeon rewards when a score
+// crosses those thresholds. Safe to call on every answer — the Aeon side keys
+// the one-time payout on (user, event_type, word id), so a word that later drops
+// below the threshold and crosses it again simply gets a 0 the second time.
+async function awardWordMilestones(wid,prevScore,newScore){
+  let total=0;
+  if(newScore>=2&&prevScore<2)total+=await awardAeon('word_first_known',4,String(wid),'Слово выучено');
+  if(newScore>=3&&prevScore<3)total+=await awardAeon('word_mastered',2,String(wid),'Слово освоено полностью');
+  return total;
 }
 
 /* ══════════════════════════════════════════════
@@ -950,6 +1102,40 @@ function renderStatusPage(){
       <div class="lr-badge">${isCur?'◀ Текущий':reached?'✓ Достигнут':''}</div>
     </div>`;
   }).join('');
+  renderAeonPanel();
+}
+
+const AEON_CAP_LABELS={
+  verified_answer:'Верные ответы (Тест / Глаголы)',
+  session:'Завершённые сессии',
+  streak:'Дневной стрик',
+  due_cleared:'Очередь повторения'
+};
+// Shows today's usage against each daily-capped Aeon reward, plus a plain-
+// language explanation of the rules. Purely informational — the actual caps
+// are enforced server-side in Aeon regardless of what's shown here.
+async function renderAeonPanel(){
+  const panel=document.getElementById('aeon-panel');
+  if(!panel||!currentUser)return;
+  const username=AEON_CONFIG.username[currentUser.uid];
+  if(!username||username.startsWith('REPLACE_')){
+    panel.innerHTML=`<div class="aeon-rules">Интеграция с Aeon ещё не настроена — заполните AEON_CONFIG вверху файла и запустите aeon_learning_rewards.sql в проекте Aeon.</div>`;
+    return;
+  }
+  panel.innerHTML=`<div class="aeon-reset">Загрузка лимитов…</div>`;
+  const usage=await getAeonUsageToday();
+  const rows=usage.map(u=>{
+    const cap=Number(u.cap)||0,used=Math.min(Number(u.used)||0,cap);
+    const pct=cap?Math.round(used/cap*100):0;
+    return`<div class="aeon-row">
+      <div class="aeon-row-label"><span>${AEON_CAP_LABELS[u.event_type]||u.event_type}</span><span>${used} / ${cap} Æ</span></div>
+      <div class="aeon-row-bar"><div class="aeon-row-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  panel.innerHTML=`
+    <div class="aeon-reset">Дневные лимиты сбрасываются в полночь (Europe/Copenhagen) · через ${fmtCountdown(msUntilMidnightCPH())}</div>
+    ${rows||'<div class="aeon-rules">Пока нет активности сегодня.</div>'}
+    <div class="aeon-rules"><b>Правила:</b> за верные ответы в Тесте и Глагольных формах, завершённые сессии (от 10 слов) и ежедневный стрик Æ начисляется до дневного лимита выше. Первое изучение слова, полное освоение слова, еженедельная очистка очереди повторения и переход на новый уровень — разовые бонусы без дневного лимита, каждый выплачивается только один раз. Все лимиты проверяются на сервере Aeon.</div>`;
 }
 
 /* ══════════════════════════════════════════════
@@ -1317,7 +1503,7 @@ document.getElementById('start-btn').onclick=()=>{
 ══════════════════════════════════════════════ */
 function startGame(game,pool){
   queue=[...pool]; qIdx=0;
-  results={correct:0,wrong:0,mistakes:[],testPtsEarned:0};
+  results={correct:0,wrong:0,mistakes:[],testPtsEarned:0,aeonEarned:0};
   document.getElementById('g-title').textContent=game===1?'🃏 Карточки':game===2?'⌨️ Глагольные формы':'🧪 Тест';
   document.getElementById('game-screen').classList.add('on');
   updateProg();
@@ -1358,7 +1544,13 @@ function flipFC(){document.getElementById('fc').classList.toggle('flipped');docu
 async function fcAns(know){
   const w=queue[qIdx];
   if(know)results.correct++; else{results.wrong++;results.mistakes.push({w,type:'fc'})}
-  await setUserScore(w.id,know);
+  const {prevScore,newScore}=await setUserScore(w.id,know);
+  // Flashcards are self-reported (no verification), so no per-answer Aeon reward here —
+  // only the one-time word-milestone bonus if this answer crosses the "known" threshold.
+  if(know){
+    const earned=await awardWordMilestones(w.id,prevScore,newScore);
+    results.aeonEarned=(results.aeonEarned||0)+earned;
+  }
   qIdx++; showFC();
 }
 
@@ -1397,8 +1589,14 @@ async function vcCheck(){
   document.getElementById('vg-check').style.display='none';
   document.getElementById('vg-skip').style.display='none';
   document.getElementById('vg-next').style.display='inline-block';
-  await setUserScore(w.id,ok);
-  if(ok)results.correct++; else{results.wrong++;results.mistakes.push({w,ans,type:'verb'})}
+  const {prevScore,newScore}=await setUserScore(w.id,ok);
+  if(ok){
+    results.correct++;
+    const aeon1=await awardAeon('verified_answer',1,null,'Dansk Ordbog: глагольные формы');
+    const aeon2=await awardWordMilestones(w.id,prevScore,newScore);
+    const earned=aeon1+aeon2;
+    if(earned>0){results.aeonEarned=(results.aeonEarned||0)+earned;document.getElementById('vg-fb').textContent+=` · +${earned} Æ`}
+  }else{results.wrong++;results.mistakes.push({w,ans,type:'verb'})}
 }
 function vcSkip(){const w=queue[qIdx];results.wrong++;results.mistakes.push({w,ans:'(пропущено)',type:'verb'});qIdx++;showVC()}
 function vcNext(){qIdx++;showVC()}
@@ -1437,9 +1635,13 @@ async function qzAnswer(btn,chosen,correct){
   const ptsEl=document.getElementById('qz-pts');
   if(ok){
     results.correct++; results.testPtsEarned++;
-    await setUserScore(w.id,true);
+    const {prevScore,newScore}=await setUserScore(w.id,true);
     await addTestPoints(1);
-    ptsEl.textContent='+1 XP 🌟';
+    const aeon1=await awardAeon('verified_answer',1,null,'Dansk Ordbog: тест');
+    const aeon2=await awardWordMilestones(w.id,prevScore,newScore);
+    const earned=aeon1+aeon2;
+    if(earned>0)results.aeonEarned=(results.aeonEarned||0)+earned;
+    ptsEl.textContent='+1 XP 🌟'+(earned>0?` · +${earned} Æ`:'');
   }else{
     results.wrong++; results.mistakes.push({w,type:'quiz',ans:chosen});
     await setUserScore(w.id,false);
@@ -1459,8 +1661,24 @@ async function finishGame(){
   document.getElementById('re-title').textContent=title;
   document.getElementById('re-sub').textContent=`${total} ${wc(total)} пройдено`;
 
+  // Session-level Aeon rewards. Per-answer rewards (verified answers, word
+  // milestones) were already added to results.aeonEarned as they happened.
+  if(total>=1){
+    const{streakAeon,milestoneAeon}=await recordPracticeDay();
+    results.aeonEarned+=streakAeon+milestoneAeon;
+  }
+  if((selGame===2||selGame===3)&&total>=10){
+    results.aeonEarned+=await awardAeon('session',5,null,'Dansk Ordbog: сессия завершена');
+  }
+  if(getDueCount()===0){
+    results.aeonEarned+=await awardAeon('due_cleared',15,weekKeyCPH(),'Очередь повторения очищена');
+  }
+
   // check level up
   const prog=getLevelProgress(currentUser.uid);
+  const levelBonus=LEVEL_UP_AMOUNTS[prog.cur.lvl];
+  if(levelBonus)results.aeonEarned+=await awardAeon('level_up',levelBonus,String(prog.cur.lvl),`Новый уровень: ${prog.cur.name}`);
+
   const statusUpd=document.getElementById('re-status-upd');
   statusUpd.style.display='none';
 
@@ -1475,7 +1693,8 @@ async function finishGame(){
     <div class="rs good"><div class="rs-val">${results.correct}</div><div class="rs-lbl">Правильно</div></div>
     <div class="rs bad"><div class="rs-val">${results.wrong}</div><div class="rs-lbl">Ошибок</div></div>
     <div class="rs"><div class="rs-val">${pct}%</div><div class="rs-lbl">Точность</div></div>
-    ${extraGrid||`<div class="rs"><div class="rs-val">${total}</div><div class="rs-lbl">Всего</div></div>`}`;
+    ${extraGrid||`<div class="rs"><div class="rs-val">${total}</div><div class="rs-lbl">Всего</div></div>`}
+    ${results.aeonEarned>0?`<div class="rs aeon"><div class="rs-val">Æ ${results.aeonEarned}</div><div class="rs-lbl">Начислено в Aeon</div></div>`:''}`;
 
   const me=document.getElementById('re-mistakes');
   if(results.mistakes.length){
