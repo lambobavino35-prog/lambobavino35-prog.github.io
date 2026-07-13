@@ -802,10 +802,18 @@ const USERS=[
 ];
 
 /* ══════════════════════════════════════════════
-   PRONUNCIATION (Web Speech API)
-   Danish spelling and pronunciation diverge a lot,
-   so every Danish word gets a speaker button.
-══════════════════════════════════════════════ */
+   PRONUNCIATION (Google Cloud TTS, cached in Supabase, browser voice as fallback)
+   Danish spelling and pronunciation diverge a lot, so every Danish word
+   gets a speaker button. Priority: shared Supabase cache (instant, free)
+   -> fresh Google Cloud TTS call (cached for next time) -> browser
+   speechSynthesis if Google is unreachable or misconfigured, so the
+   button never just does nothing.
+==============================================
+*/
+const GOOGLE_TTS_API_KEY='AIzaSyAhJv73ebHlGu21BuBJGJ8O3PzLhJJFte0';
+let googleVoiceName=null; // discovered once, then reused for the session
+const ttsMemCache={};     // text -> base64 mp3, in-memory fast path
+
 let daVoice=null;
 function primeVoices(){
   if(!('speechSynthesis' in window))return;
@@ -813,7 +821,7 @@ function primeVoices(){
   pick();
   speechSynthesis.onvoiceschanged=pick;
 }
-function speakDanish(text){
+function speakDanishBrowser(text){
   if(!('speechSynthesis' in window)){toast('Голосовой движок недоступен в этом браузере');return}
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
@@ -821,7 +829,60 @@ function speakDanish(text){
   if(daVoice)u.voice=daVoice;
   speechSynthesis.speak(u);
 }
+function playBase64Mp3(b64,text){
+  const audio=new Audio('data:audio/mp3;base64,'+b64);
+  audio.play().catch(err=>{console.warn('Audio playback failed, falling back to browser voice',err);speakDanishBrowser(text)});
+}
+// Picks the best available da-DK voice once per session: prefer newer/higher
+// quality tiers, fall back down the list, and fall back to a known-good
+// hardcoded name if the voice-list call itself fails for any reason.
+async function pickGoogleVoice(){
+  if(googleVoiceName)return googleVoiceName;
+  try{
+    const res=await fetch(`https://texttospeech.googleapis.com/v1/voices?languageCode=da-DK&key=${GOOGLE_TTS_API_KEY}`);
+    const data=await res.json();
+    const names=(data.voices||[]).map(v=>v.name);
+    const tier=['Chirp3-HD','Neural2','Wavenet','Standard'].find(t=>names.some(n=>n.includes(t)));
+    googleVoiceName=(tier&&names.find(n=>n.includes(tier)))||names[0]||'da-DK-Neural2-F';
+  }catch(err){
+    googleVoiceName='da-DK-Neural2-F';
+  }
+  return googleVoiceName;
+}
+async function fetchGoogleTTS(text){
+  const voice=await pickGoogleVoice();
+  const res=await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({input:{text},voice:{languageCode:'da-DK',name:voice},audioConfig:{audioEncoding:'MP3'}})
+  });
+  if(!res.ok)throw new Error('Google TTS HTTP '+res.status);
+  const data=await res.json();
+  if(!data.audioContent)throw new Error('Google TTS: no audioContent in response');
+  return data.audioContent;
+}
+async function speakDanish(text){
+  if(!GOOGLE_TTS_API_KEY||GOOGLE_TTS_API_KEY.startsWith('REPLACE_')){speakDanishBrowser(text);return}
+  if(ttsMemCache[text]){playBase64Mp3(ttsMemCache[text],text);return}
+  try{
+    const{data}=await sb.from('pronunciation_cache').select('audio_base64').eq('text',text).maybeSingle();
+    if(data&&data.audio_base64){
+      ttsMemCache[text]=data.audio_base64;
+      playBase64Mp3(data.audio_base64,text);
+      return;
+    }
+  }catch(err){/* cache miss or table not migrated yet -- fall through to fresh synthesis */}
+  try{
+    const b64=await fetchGoogleTTS(text);
+    ttsMemCache[text]=b64;
+    playBase64Mp3(b64,text);
+    sb.from('pronunciation_cache').upsert({text,audio_base64:b64}).then(()=>{}).catch(()=>{}); // fire-and-forget
+  }catch(err){
+    console.warn('Google TTS failed, falling back to browser voice',err);
+    speakDanishBrowser(text);
+  }
+}
 primeVoices();
+
 
 /* ══════════════════════════════════════════════
    STATE
