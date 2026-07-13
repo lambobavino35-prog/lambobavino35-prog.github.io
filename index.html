@@ -113,11 +113,6 @@ main{max-width:1120px;margin:0 auto;padding:14px 20px 24px}
 .score-chip{font-size:10px;font-family:sans-serif;padding:2px 7px;border-radius:10px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;border:1px solid var(--border);background:var(--surface2)}
 .score-chip.lvl0{color:var(--muted)}.score-chip.lvl1{color:#f97316}.score-chip.lvl2{color:#facc15}.score-chip.lvl3{color:var(--success)}
 
-/* ══ AUDIO ══ */
-.speak-btn{background:none;border:1px solid var(--border);color:var(--accent2);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;flex-shrink:0;transition:all .15s;padding:0}
-.speak-btn:hover{background:var(--accent2);color:#0e0f14;border-color:var(--accent2)}
-.speak-btn:active{transform:scale(.9)}
-.speak-btn-lg{width:40px;height:40px;font-size:17px;border-width:2px}
 .word-da-row{display:flex;align-items:center;gap:7px}
 .fc-word-row{display:flex;align-items:center;justify-content:center;gap:10px}
 .vg-word-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}
@@ -802,89 +797,6 @@ const USERS=[
 ];
 
 /* ══════════════════════════════════════════════
-   PRONUNCIATION (Google Cloud TTS, cached in Supabase, browser voice as fallback)
-   Danish spelling and pronunciation diverge a lot, so every Danish word
-   gets a speaker button. Priority: shared Supabase cache (instant, free)
-   -> fresh Google Cloud TTS call (cached for next time) -> browser
-   speechSynthesis if Google is unreachable or misconfigured, so the
-   button never just does nothing.
-==============================================
-*/
-const GOOGLE_TTS_API_KEY='REPLACE_WITH_GOOGLE_TTS_API_KEY';
-let googleVoiceName=null; // discovered once, then reused for the session
-const ttsMemCache={};     // text -> base64 mp3, in-memory fast path
-
-let daVoice=null;
-function primeVoices(){
-  if(!('speechSynthesis' in window))return;
-  const pick=()=>{const v=speechSynthesis.getVoices();daVoice=v.find(x=>x.lang&&x.lang.toLowerCase().startsWith('da'))||null;};
-  pick();
-  speechSynthesis.onvoiceschanged=pick;
-}
-function speakDanishBrowser(text){
-  if(!('speechSynthesis' in window)){toast('Голосовой движок недоступен в этом браузере');return}
-  speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang='da-DK'; u.rate=0.88;
-  if(daVoice)u.voice=daVoice;
-  speechSynthesis.speak(u);
-}
-function playBase64Mp3(b64,text){
-  const audio=new Audio('data:audio/mp3;base64,'+b64);
-  audio.play().catch(err=>{console.warn('Audio playback failed, falling back to browser voice',err);speakDanishBrowser(text)});
-}
-// Picks the best available da-DK voice once per session: prefer newer/higher
-// quality tiers, fall back down the list, and fall back to a known-good
-// hardcoded name if the voice-list call itself fails for any reason.
-async function pickGoogleVoice(){
-  if(googleVoiceName)return googleVoiceName;
-  try{
-    const res=await fetch(`https://texttospeech.googleapis.com/v1/voices?languageCode=da-DK&key=${GOOGLE_TTS_API_KEY}`);
-    const data=await res.json();
-    const names=(data.voices||[]).map(v=>v.name);
-    const tier=['Chirp3-HD','Neural2','Wavenet','Standard'].find(t=>names.some(n=>n.includes(t)));
-    googleVoiceName=(tier&&names.find(n=>n.includes(tier)))||names[0]||'da-DK-Neural2-F';
-  }catch(err){
-    googleVoiceName='da-DK-Neural2-F';
-  }
-  return googleVoiceName;
-}
-async function fetchGoogleTTS(text){
-  const voice=await pickGoogleVoice();
-  const res=await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_TTS_API_KEY}`,{
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({input:{text},voice:{languageCode:'da-DK',name:voice},audioConfig:{audioEncoding:'MP3'}})
-  });
-  if(!res.ok)throw new Error('Google TTS HTTP '+res.status);
-  const data=await res.json();
-  if(!data.audioContent)throw new Error('Google TTS: no audioContent in response');
-  return data.audioContent;
-}
-async function speakDanish(text){
-  if(!GOOGLE_TTS_API_KEY||GOOGLE_TTS_API_KEY.startsWith('REPLACE_')){speakDanishBrowser(text);return}
-  if(ttsMemCache[text]){playBase64Mp3(ttsMemCache[text],text);return}
-  try{
-    const{data}=await sb.from('pronunciation_cache').select('audio_base64').eq('text',text).maybeSingle();
-    if(data&&data.audio_base64){
-      ttsMemCache[text]=data.audio_base64;
-      playBase64Mp3(data.audio_base64,text);
-      return;
-    }
-  }catch(err){/* cache miss or table not migrated yet -- fall through to fresh synthesis */}
-  try{
-    const b64=await fetchGoogleTTS(text);
-    ttsMemCache[text]=b64;
-    playBase64Mp3(b64,text);
-    sb.from('pronunciation_cache').upsert({text,audio_base64:b64}).then(()=>{}).catch(()=>{}); // fire-and-forget
-  }catch(err){
-    console.warn('Google TTS failed, falling back to browser voice',err);
-    speakDanishBrowser(text);
-  }
-}
-primeVoices();
-
-
-/* ══════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════ */
 let words=[],decks=[];
@@ -1294,7 +1206,7 @@ function cardHtml(w){
   const levelChip=`<span class="score-chip ${levelClass(sc.interval)}" title="${nextTxt?'Следующее повторение: '+nextTxt:'Ещё не повторяли'}">⏱ ${levelLabel(sc.interval)}</span>`;
   return `<div class="card ${isV?'verb':'other'}">
     <div class="card-top">
-      <div class="word-da-row"><div class="word-da">${w.da}</div><button class="speak-btn" onclick="speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button></div>
+      <div class="word-da-row"><div class="word-da">${w.da}</div></div>
       <span class="badge ${isV?'badge-verb':'badge-other'}">${isV?'verb':'ord'}</span>
     </div>
     <div class="score-row">${levelChip}</div>
@@ -1639,12 +1551,11 @@ function showFC(){
   const w=queue[qIdx],dir=getDir();
   const fw=dir==='da2ru'?w.da:w.ru,bw=dir==='da2ru'?w.ru:w.da;
   const fl=dir==='da2ru'?'Датское слово':'Русский перевод',bl=dir==='da2ru'?'Перевод':'Датское слово';
-  const spk=`<button class="speak-btn speak-btn-lg" onclick="event.stopPropagation();speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button>`;
   updateProg();
   document.getElementById('game-body').innerHTML=`<div style="width:100%;max-width:480px">
     <div class="fc-scene"><div class="fc" id="fc" onclick="flipFC()">
-      <div class="fc-face fc-front"><div class="fc-lbl">${fl}</div><div class="fc-word-row"><div class="fc-word">${fw}</div>${dir==='da2ru'?spk:''}</div><div class="fc-hint">Нажмите, чтобы перевернуть</div></div>
-      <div class="fc-face fc-back"><div class="fc-lbl">${bl}</div><div class="fc-word-row"><div class="fc-word">${bw}</div>${dir==='ru2da'?spk:''}</div>${w.example?`<div class="fc-ex">${w.example}</div>`:''}</div>
+      <div class="fc-face fc-front"><div class="fc-lbl">${fl}</div><div class="fc-word-row"><div class="fc-word">${fw}</div></div><div class="fc-hint">Нажмите, чтобы перевернуть</div></div>
+      <div class="fc-face fc-back"><div class="fc-lbl">${bl}</div><div class="fc-word-row"><div class="fc-word">${bw}</div></div>${w.example?`<div class="fc-ex">${w.example}</div>`:''}</div>
     </div></div>
     <div class="fc-btns" id="fc-btns" style="display:none">
       <button class="fc-btn fc-dunno" onclick="fcAns(false)">✗ Не знаю</button>
@@ -1671,7 +1582,7 @@ function showVC(){
   updateProg();
   document.getElementById('game-body').innerHTML=`<div class="vg-card">
     <div class="vg-plbl">Глагол на датском</div>
-    <div class="vg-word-row"><div class="vg-word">${w.da}</div><button class="speak-btn speak-btn-lg" onclick="speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button></div>
+    <div class="vg-word-row"><div class="vg-word">${w.da}</div></div>
     <div class="vg-ru">${w.ru||''}</div>
     <div class="vg-flbl">Прошедшее время</div>
     <input class="vg-inp" id="vg-inp" placeholder="Введите ответ..." autocomplete="off" autocorrect="off" spellcheck="false">
@@ -1695,7 +1606,7 @@ async function vcCheck(){
   inp.classList.add(ok?'ok':'err'); inp.disabled=true;
   document.getElementById('vg-fb').textContent=ok?'✓ Правильно!':'✗ Неправильно';
   document.getElementById('vg-fb').className='vg-fb '+(ok?'ok':'err');
-  if(!ok)document.getElementById('vg-ans').innerHTML=`Правильный ответ: ${correct} <button class="speak-btn" style="vertical-align:middle" onclick="speakDanish('${escQ(correct)}')" title="Произношение">🔊</button>`;
+  if(!ok)document.getElementById('vg-ans').innerHTML=`Правильный ответ: ${correct}`;
   document.getElementById('vg-check').style.display='none';
   document.getElementById('vg-skip').style.display='none';
   document.getElementById('vg-next').style.display='inline-block';
@@ -1723,7 +1634,7 @@ function showQuiz(){
   updateProg();
   document.getElementById('game-body').innerHTML=`<div class="quiz-card">
     <div class="qz-q-lbl">${qLabel}</div>
-    <div class="fc-word-row"><div class="qz-word">${question}</div>${dir==='da2ru'?`<button class="speak-btn speak-btn-lg" onclick="speakDanish('${escQ(w.da)}')" title="Произношение">🔊</button>`:''}</div>
+    <div class="fc-word-row"><div class="qz-word">${question}</div></div>
     <div class="qz-opts" id="qz-opts">
       ${opts.map((o,i)=>`<button class="qz-opt" onclick="qzAnswer(this,'${escQ(o)}','${escQ(answer)}')">${o}</button>`).join('')}
     </div>
