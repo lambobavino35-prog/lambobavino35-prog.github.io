@@ -626,7 +626,7 @@ const AEON_KEY='sb_publishable_mLPeo0SqWfGr1iIfmW63uw_VSBI5kfM'; // Aeon's own p
 const aeon=supabase.createClient(AEON_URL,AEON_KEY);
 
 const AEON_CONFIG={
-  secret:'pig',       // must match the p_secret check inside aeon_learning_rewards.sql
+  secret:'pig',
   username:{denis:'lambo', sergei:'slipun'} // Aeon usernames, not Dansk Ordbog uids
 };
 
@@ -646,6 +646,25 @@ async function awardAeon(eventType,amount,refId,memo){
     if(error){console.warn('Aeon award failed',error);return 0}
     return Number(data)||0;
   }catch(err){console.warn('Aeon award failed',err);return 0}
+}
+// Credits every event from one finished session in a single call, so it lands
+// as one row in the Aeon transaction history instead of one row per event
+// type. events is an array of {type, amount, ref}; per-event daily caps and
+// one-time dedup are still enforced individually server-side, only the final
+// transactions row is merged. Returns the total actually credited.
+async function awardAeonBatch(events,memo){
+  if(!currentUser||!events.length)return 0;
+  const username=AEON_CONFIG.username[currentUser.uid];
+  if(!username||username.startsWith('REPLACE_'))return 0;
+  try{
+    const {data,error}=await aeon.rpc('award_learning_rewards_batch',{
+      p_secret:AEON_CONFIG.secret, p_username:username,
+      p_event_types:events.map(e=>e.type), p_amounts:events.map(e=>e.amount),
+      p_ref_ids:events.map(e=>e.ref||null), p_summary_memo:memo||'Dansk Ordbog'
+    });
+    if(error){console.warn('Aeon batch award failed',error);return 0}
+    return Number(data)||0;
+  }catch(err){console.warn('Aeon batch award failed',err);return 0}
 }
 // Reads today's usage per event type, for the limits panel on the Status page.
 // Returns {ok:true, data} on success or {ok:false, error} so the panel can
@@ -967,9 +986,10 @@ function checkStreakPopup(){
 
 // Call once per finished practice session (any mode, any length — matches
 // "любая сессия, даже короткая"). Updates the streak counter at most once a
-// day, but always attempts the Aeon streak reward — the server dedupes on
-// (user, 'streak', today's date), so this is safe to call repeatedly and
-// self-heals if an earlier attempt today failed (e.g. before Aeon was set up).
+// day (local bookkeeping only). Returns the Aeon events this counts as --
+// finishGame batches these with everything else from the session, so
+// retrying later the same day is always safe: the server dedupes on
+// (user, 'streak', today's date).
 async function recordPracticeDay(){
   const ud=userDataMap[currentUser.uid];
   const today=todayCPH();
@@ -981,10 +1001,10 @@ async function recordPracticeDay(){
     catch(err){syncFail('Стрик не сохранён');}
     updateHeaderUser();
   }
-  const streakAeon=await awardAeon('streak',5,today,`Стрик: день ${ud.streak}`);
+  const events=[{type:'streak',amount:5,ref:today}];
   const milestones={7:20,30:50,100:150};
-  const milestoneAeon=milestones[ud.streak]?await awardAeon('streak_milestone',milestones[ud.streak],String(ud.streak),`${ud.streak} дней подряд!`):0;
-  return{streakAeon,milestoneAeon};
+  if(milestones[ud.streak])events.push({type:'streak_milestone',amount:milestones[ud.streak],ref:String(ud.streak)});
+  return events;
 }
 document.getElementById('streak-ok').onclick=()=>{document.getElementById('streak-overlay').classList.remove('open')};
 document.getElementById('streak-overlay').onclick=e=>{if(e.target===document.getElementById('streak-overlay'))e.currentTarget.classList.remove('open')};
@@ -1057,15 +1077,17 @@ async function setUserScore(wid,correct){
   updateHeaderUser();
   return{prevScore:prev.score,newScore};
 }
-// Fires the one-time "word learned" / "word mastered" Aeon rewards when a score
-// crosses those thresholds. Safe to call on every answer — the Aeon side keys
-// the one-time payout on (user, event_type, word id), so a word that later drops
-// below the threshold and crosses it again simply gets a 0 the second time.
-async function awardWordMilestones(wid,prevScore,newScore){
-  let total=0;
-  if(newScore>=2&&prevScore<2)total+=await awardAeon('word_first_known',4,String(wid),'Слово выучено');
-  if(newScore>=3&&prevScore<3)total+=await awardAeon('word_mastered',2,String(wid),'Слово освоено полностью');
-  return total;
+// Returns which one-time Aeon events (if any) a score change crosses --
+// doesn't call Aeon itself, just describes what to award. finishGame batches
+// these together with everything else from the session into one call. Safe
+// to compute on every answer: the Aeon side keys the one-time payout on
+// (user, event_type, word id), so a word that drops below the threshold and
+// crosses it again later simply gets a 0 that time, harmless either way.
+function wordMilestoneEvents(wid,prevScore,newScore){
+  const events=[];
+  if(newScore>=2&&prevScore<2)events.push({type:'word_first_known',amount:4,ref:String(wid)});
+  if(newScore>=3&&prevScore<3)events.push({type:'word_mastered',amount:2,ref:String(wid)});
+  return events;
 }
 
 /* ══════════════════════════════════════════════
@@ -1470,6 +1492,7 @@ document.querySelectorAll('.game-card').forEach(gc=>{
     document.querySelectorAll('.game-card').forEach(x=>x.classList.remove('sel'));
     gc.classList.add('sel'); selGame=+gc.dataset.game;
     document.getElementById('g1-dir-block').style.display=selGame===2?'none':'block';
+    syncSrcFieldVisibility();
   };
 });
 function initRadios(sel){
@@ -1483,13 +1506,17 @@ function initRadios(sel){
 }
 initRadios('#src-row .ropt');
 initRadios('#dir-row .ropt');
+function syncSrcFieldVisibility(){
+  const checked=document.querySelector('[name="src"]:checked');
+  if(!checked)return;
+  document.getElementById('cfg-due').style.display=checked.value==='due'?'block':'none';
+  document.getElementById('cfg-count').style.display=checked.value==='count'?'block':'none';
+  document.getElementById('cfg-deck').style.display=checked.value==='deck'?'block':'none';
+}
 document.querySelectorAll('[name="src"]').forEach(inp=>{
-  inp.onchange=()=>{
-    document.getElementById('cfg-due').style.display=inp.value==='due'?'block':'none';
-    document.getElementById('cfg-count').style.display=inp.value==='count'?'block':'none';
-    document.getElementById('cfg-deck').style.display=inp.value==='deck'?'block':'none';
-  };
+  inp.onchange=syncSrcFieldVisibility;
 });
+syncSrcFieldVisibility();
 function syncDeckSelect(){
   const sel=document.getElementById('deck-sel-p');
   sel.innerHTML='<option value="">— выберите набор —</option>'+
@@ -1679,31 +1706,47 @@ async function finishGame(){
   document.getElementById('re-title').textContent=title;
   document.getElementById('re-sub').textContent=`${total} ${wc(total)} пройдено`;
 
-  // All Aeon crediting happens here, once, now that the session is over —
-  // not after every answer. Per-answer events were only queued in results
-  // (verifiedCount, scoreChanges) while the session was running.
+  // All Aeon crediting happens here, once, now that the session is over --
+  // and as ONE batched call, so it lands as a single row in the Aeon
+  // transaction history instead of one row per event type. Per-answer
+  // events were only queued in results (verifiedCount, scoreChanges) while
+  // the session was running.
+  const aeonEvents=[];
+  const memoParts=[];
   if(results.verifiedCount>0){
-    const label=selGame===3?'Dansk Ordbog: тест':'Dansk Ordbog: глагольные формы';
-    results.aeonEarned+=await awardAeon('verified_answer',results.verifiedCount,null,label);
+    aeonEvents.push({type:'verified_answer',amount:results.verifiedCount});
+    memoParts.push(`${results.verifiedCount} верных`);
   }
   for(const{wid,prevScore,newScore}of(results.scoreChanges||[])){
-    results.aeonEarned+=await awardWordMilestones(wid,prevScore,newScore);
+    aeonEvents.push(...wordMilestoneEvents(wid,prevScore,newScore));
   }
+  const learnedCount=aeonEvents.filter(e=>e.type==='word_first_known').length;
+  const masteredCount=aeonEvents.filter(e=>e.type==='word_mastered').length;
+  if(learnedCount)memoParts.push(`${learnedCount} слов выучено`);
+  if(masteredCount)memoParts.push(`${masteredCount} слов освоено`);
   if(total>=1){
-    const{streakAeon,milestoneAeon}=await recordPracticeDay();
-    results.aeonEarned+=streakAeon+milestoneAeon;
+    const streakEvents=await recordPracticeDay();
+    aeonEvents.push(...streakEvents);
+    memoParts.push(`стрик день ${userDataMap[currentUser.uid].streak}`);
   }
   if((selGame===2||selGame===3)&&total>=10){
-    results.aeonEarned+=await awardAeon('session',5,null,'Dansk Ordbog: сессия завершена');
+    aeonEvents.push({type:'session',amount:5});
+    memoParts.push('сессия завершена');
   }
   if(getDueCount()===0){
-    results.aeonEarned+=await awardAeon('due_cleared',15,weekKeyCPH(),'Очередь повторения очищена');
+    aeonEvents.push({type:'due_cleared',amount:15,ref:weekKeyCPH()});
+    memoParts.push('очередь очищена');
   }
 
   // check level up
   const prog=getLevelProgress(currentUser.uid);
   const levelBonus=LEVEL_UP_AMOUNTS[prog.cur.lvl];
-  if(levelBonus)results.aeonEarned+=await awardAeon('level_up',levelBonus,String(prog.cur.lvl),`Новый уровень: ${prog.cur.name}`);
+  if(levelBonus){
+    aeonEvents.push({type:'level_up',amount:levelBonus,ref:String(prog.cur.lvl)});
+    memoParts.push(`новый уровень ${prog.cur.name}`);
+  }
+  results.aeonEarned+=await awardAeonBatch(aeonEvents,`Dansk Ordbog: ${memoParts.join(', ')}`);
+
 
   const statusUpd=document.getElementById('re-status-upd');
   statusUpd.style.display='none';
